@@ -1,0 +1,53 @@
+{
+  "name": "convene",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20 <21"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "dev": "turbo run dev --parallel",
+    "size-limit": "node scripts/prepare-bundle-size-check.mjs && size-limit",
+    "db:migrate": "tsx scripts/db-migrate.ts",
+    "db:rollback": "tsx scripts/db-rollback.ts",
+    "db:create-partitions": "tsx scripts/create-partitions.ts",
+    "db:seed": "tsx scripts/db-seed.ts",
+    "generate:types": "tsx scripts/generate-types.ts",
+    "generate:types:check": "tsx scripts/generate-types.ts --check",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "@size-limit/file": "^11.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^4.0.0",
+    "dotenv": "^16.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-jsx-a11y": "^6.9.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "openapi-typescript": "^7.13.0",
+    "postgres": "^3.4.9",
+    "prettier": "^3.0.0",
+    "size-limit": "^11.0.0",
+    "tsx": "^4.19.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.18",
+      "sharp": ">=0.35.0"
+    }
+  }
+}

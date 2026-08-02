@@ -1,0 +1,41 @@
+@import "tailwindcss";
+@import "@convene/tokens/css/variables.css";
+@import "@convene/tokens/css/theme.css";
+
+/* Tailwind v4's automatic content detection only scans this app's own
+ * directory. @convene/ui (and any future package that renders className
+ * strings) lives outside it, in a sibling workspace package, so it must be
+ * added explicitly or none of its utility classes get generated here. */
+@source "../../../packages/ui/src";
+
+/* Layer the actual next/font-loaded families on top of the portable token
+ * font-stacks (see app/layout.tsx). --font-geist/--font-aeonik stay usable
+ * on their own (e.g. in emails or Storybook) outside of this Next app. */
+:root {
+  --font-geist: var(--font-geist-loaded), "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-aeonik: var(--font-aeonik-loaded), "Aeonik", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* docs/MAIN_DESIGN.md declares a single light theme — no dark-mode variant. */
+body {
+  background: var(--surface-sky-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-geist);
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

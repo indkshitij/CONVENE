@@ -1,0 +1,17 @@
+# CODEOWNERS alone only designates required reviewers on a path; the "two
+# reviewers" requirement (DEVELOPMENT_PLAN.md §6, CLAUDE.md rule 10) must
+# additionally be configured in the repo's branch protection settings — see
+# the project owner for the exact steps and current status of that setup.
+#
+# This repo (github.com/indkshitij/CONVENE) is under a personal GitHub
+# account, not an organization, so GitHub Teams (@org/team-name) cannot be
+# used here — only individual GitHub usernames are valid owners below.
+#
+# INTENTIONALLY UNASSIGNED: no owner is listed for these paths yet. Real
+# GitHub usernames are needed from the project owner before this file does
+# anything — an unowned path here is inert, not a guessed placeholder.
+#
+# /packages/matching/
+# /apps/api/src/modules/auth/
+# **/safety/**
+# **/*safety*

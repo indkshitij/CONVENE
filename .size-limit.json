@@ -1,0 +1,8 @@
+[
+  {
+    "name": "apps/web shell (first-load JS shared by every route, PRD §21.7)",
+    "path": "apps/web/.next/analyze/shell.js",
+    "limit": "180 KB",
+    "gzip": true
+  }
+]

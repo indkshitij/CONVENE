@@ -1,0 +1,18 @@
+{
+  "files": [],
+  "references": [
+    { "path": "apps/web" },
+    { "path": "apps/api" },
+    { "path": "apps/realtime" },
+    { "path": "apps/admin" },
+    { "path": "apps/mobile" },
+    { "path": "packages/tokens" },
+    { "path": "packages/ui" },
+    { "path": "packages/types" },
+    { "path": "packages/validation" },
+    { "path": "packages/matching" },
+    { "path": "packages/analytics" },
+    { "path": "packages/config" },
+    { "path": "packages/db" }
+  ]
+}

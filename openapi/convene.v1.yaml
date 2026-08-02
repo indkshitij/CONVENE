@@ -1,0 +1,2080 @@
+openapi: 3.1.0
+info:
+  title: Convene API
+  version: "1.0"
+  description: >
+    PRD §17.9 — the routing index and contract for anything not already
+    covered in §10. Full request/response schemas, validation rules and
+    per-endpoint error tables are specified inline in §10; this document is
+    authored now with all 67 endpoint rows declared so client and server
+    types can be generated from a single source of truth (P4.4) and cannot
+    drift, with concrete request/response schemas filled in as each phase
+    implements that module. Until then, request/response bodies use the
+    Placeholder schema (an open object) rather than inventing shapes ahead
+    of the phases that own them.
+servers:
+  - url: https://api.convene.app/v1
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: auth
+    description: §10.1 Identity, Authentication & Onboarding
+  - name: profile
+    description: §10.2 Professional Profile
+  - name: availability
+    description: §10.3 Availability System
+  - name: intents
+    description: §10.4 Intent-Based Networking
+  - name: location
+    description: §10.5 Location-Based Networking
+  - name: discovery
+    description: §11 Matching & discovery
+  - name: connections
+    description: §10.6 Connections
+  - name: messaging
+    description: §10.7 Messaging
+  - name: notifications
+    description: §10.8 Notifications
+  - name: search
+    description: §10.9 Search & Discovery Surfaces
+  - name: trust-safety
+    description: §10.10 Trust, Safety & Reputation
+  - name: media
+    description: §17.7 Media Pipeline
+  - name: ai
+    description: §12 AI features
+  - name: billing
+    description: §7 Billing
+  - name: account
+    description: §20.6 GDPR data export / account lifecycle
+  - name: realtime
+    description: §17.5 Realtime gateway
+  - name: reference-data
+    description: §16 Taxonomies
+  - name: admin
+    description: §14.20 / §20.8 Admin & moderation
+  - name: ops
+    description: §21 Probes, Prometheus
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: refresh_token
+      description: Refresh-token cookie, httpOnly/Secure/SameSite=Strict (§10.1).
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: X-Webhook-Signature
+      description: Provider webhook signature verification (§7) — not a user credential.
+
+  parameters:
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Opaque pagination cursor (§17.9 conventions).
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        default: 20
+        maximum: 50
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Supported on every POST that creates a resource (§17.9 conventions).
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      schema:
+        type: string
+      description: ETag-based optimistic concurrency on profile updates (§17.9 conventions).
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Placeholder:
+      description: >
+        Concrete request/response schemas are filled in as each phase
+        implements the owning module (§10 has the authoritative shapes) —
+        this is deliberately open rather than an invented shape.
+      type: object
+      additionalProperties: true
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, field, details, request_id, retry_after]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            field:
+              type: [string, "null"]
+            details:
+              nullable: true
+            request_id:
+              type: string
+              format: uuid
+            retry_after:
+              type: [integer, "null"]
+    PaginationMeta:
+      type: object
+      required: [next_cursor, has_more]
+      properties:
+        next_cursor:
+          type: [string, "null"]
+        has_more:
+          type: boolean
+    PaginatedPlaceholder:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Placeholder"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+  responses:
+    Ok:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Placeholder"
+    OkList:
+      description: OK (paginated)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/PaginatedPlaceholder"
+    Created:
+      description: Created
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Placeholder"
+    Accepted:
+      description: Accepted
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Placeholder"
+    NoContent:
+      description: No Content
+    BadRequest:
+      description: Malformed request (§17.9)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Unauthorized:
+      description: Missing/expired access token (§17.9)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Forbidden:
+      description: Authenticated but not permitted (§17.9)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: Not found or not visible to you (§17.9)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Conflict:
+      description: Conflict — ETag, duplicate, or state (§17.9)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Gone:
+      description: Expired resource (§17.9)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ValidationFailed:
+      description: Validation failure (§17.9)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    TooManyRequests:
+      description: Rate limited / quota exhausted (§17.9)
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    InternalError:
+      description: Unexpected error (§17.9)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+
+paths:
+  # ── §10.1 Identity, Authentication & Onboarding (rows 1-11) ──────────
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Create account (row 1)
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Password login (row 2)
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Rotate tokens (row 3)
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Revoke current session (row 4)
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /auth/logout-all:
+    post:
+      tags: [auth]
+      summary: Revoke all sessions (row 5)
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /auth/otp/send:
+    post:
+      tags: [auth]
+      summary: Phone verification — send OTP (row 6)
+      x-auth: mixed
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "202":
+          $ref: "#/components/responses/Accepted"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /auth/otp/verify:
+    post:
+      tags: [auth]
+      summary: Phone verification — verify OTP (row 6)
+      x-auth: mixed
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "410":
+          $ref: "#/components/responses/Gone"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /auth/email/verify:
+    post:
+      tags: [auth]
+      summary: Email verification (row 7)
+      x-auth: mixed
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "410":
+          $ref: "#/components/responses/Gone"
+
+  /auth/email/resend:
+    post:
+      tags: [auth]
+      summary: Resend email verification (row 7)
+      x-auth: mixed
+      responses:
+        "202":
+          $ref: "#/components/responses/Accepted"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /auth/password/forgot:
+    post:
+      tags: [auth]
+      summary: Password lifecycle — forgot (row 8)
+      x-auth: mixed
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "202":
+          $ref: "#/components/responses/Accepted"
+
+  /auth/password/reset:
+    post:
+      tags: [auth]
+      summary: Password lifecycle — reset (row 8)
+      x-auth: mixed
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "410":
+          $ref: "#/components/responses/Gone"
+
+  /auth/password/change:
+    post:
+      tags: [auth]
+      summary: Password lifecycle — change while authenticated (row 8)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /auth/sessions:
+    get:
+      tags: [auth]
+      summary: Device list (row 9)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  /auth/sessions/{id}:
+    delete:
+      tags: [auth]
+      summary: Remote session revoke (row 9)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /auth/oauth/{provider}/callback:
+    post:
+      tags: [auth]
+      summary: OAuth exchange (row 10)
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google, linkedin, apple]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /auth/account/delete:
+    post:
+      tags: [account]
+      summary: 30-day deletion (row 11)
+      responses:
+        "202":
+          $ref: "#/components/responses/Accepted"
+
+  /auth/account/cancel-delete:
+    post:
+      tags: [account]
+      summary: Cancel pending deletion (row 11)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  # ── §10.2 Professional Profile (rows 12-17) ──────────────────────────
+  /me:
+    get:
+      tags: [profile]
+      summary: Own account (row 12)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    patch:
+      tags: [profile]
+      summary: Update own account (row 12)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /me/profile:
+    get:
+      tags: [profile]
+      summary: Own profile (row 13)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    patch:
+      tags: [profile]
+      summary: Own profile partial update (ETag, row 13)
+      parameters:
+        - $ref: "#/components/parameters/IfMatch"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /profiles/{id}:
+    get:
+      tags: [profile]
+      summary: View profile, visibility-filtered (row 14)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /me/skills:
+    get:
+      tags: [profile]
+      summary: List own skills (row 15)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [profile]
+      summary: Add a skill (row 15)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /me/skills/{id}:
+    patch:
+      tags: [profile]
+      summary: Update a skill (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    delete:
+      tags: [profile]
+      summary: Remove a skill (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /me/experiences:
+    get:
+      tags: [profile]
+      summary: List experience entries (row 15)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [profile]
+      summary: Add an experience entry (row 15)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /me/experiences/{id}:
+    patch:
+      tags: [profile]
+      summary: Update an experience entry (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    delete:
+      tags: [profile]
+      summary: Remove an experience entry (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /me/education:
+    get:
+      tags: [profile]
+      summary: List education entries (row 15)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [profile]
+      summary: Add an education entry (row 15)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+  /me/education/{id}:
+    patch:
+      tags: [profile]
+      summary: Update an education entry (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    delete:
+      tags: [profile]
+      summary: Remove an education entry (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /me/certifications:
+    get:
+      tags: [profile]
+      summary: List certifications (row 15)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [profile]
+      summary: Add a certification (row 15)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+  /me/certifications/{id}:
+    patch:
+      tags: [profile]
+      summary: Update a certification (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    delete:
+      tags: [profile]
+      summary: Remove a certification (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /me/portfolio:
+    get:
+      tags: [profile]
+      summary: List portfolio items (row 15)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [profile]
+      summary: Add a portfolio item (row 15)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /me/portfolio/{id}:
+    patch:
+      tags: [profile]
+      summary: Update a portfolio item (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    delete:
+      tags: [profile]
+      summary: Remove a portfolio item (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /me/interests:
+    get:
+      tags: [profile]
+      summary: List interests (row 15)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [profile]
+      summary: Add an interest (row 15)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+  /me/interests/{id}:
+    delete:
+      tags: [profile]
+      summary: Remove an interest (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /me/languages:
+    get:
+      tags: [profile]
+      summary: List languages (row 15)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [profile]
+      summary: Add a language (row 15)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+  /me/languages/{id}:
+    patch:
+      tags: [profile]
+      summary: Update a language (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    delete:
+      tags: [profile]
+      summary: Remove a language (row 15)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /me/verification/{level}:
+    post:
+      tags: [profile]
+      summary: Advance verification ladder (row 16)
+      parameters:
+        - name: level
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [L1, L2, L3, L4]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /me/profile/completion:
+    get:
+      tags: [profile]
+      summary: Completion breakdown (row 17)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  # ── §10.3 Availability System (rows 18-22) ───────────────────────────
+  /availability/sessions:
+    post:
+      tags: [availability]
+      summary: Go available — returns match_preview (row 18)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /availability/sessions/{id}/extend:
+    post:
+      tags: [availability]
+      summary: Extend session (row 19)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /availability/sessions/{id}/end:
+    post:
+      tags: [availability]
+      summary: End session early (row 19)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /availability/me:
+    get:
+      tags: [availability]
+      summary: Current availability state (row 20)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /availability/history:
+    get:
+      tags: [availability]
+      summary: Availability history (row 20)
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  /availability/state:
+    put:
+      tags: [availability]
+      summary: Set Busy / Away / Invisible (row 21)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /availability/schedules:
+    get:
+      tags: [availability]
+      summary: List recurring windows (row 22)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [availability]
+      summary: Create a recurring window (row 22)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /availability/schedules/{id}:
+    patch:
+      tags: [availability]
+      summary: Update a recurring window (row 22)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    delete:
+      tags: [availability]
+      summary: Delete a recurring window (row 22)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  # ── §10.4 Intent-Based Networking (rows 23-25) ───────────────────────
+  /intents/taxonomy:
+    get:
+      tags: [intents]
+      summary: 14 intents + prerequisites (row 23)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /me/intents:
+    get:
+      tags: [intents]
+      summary: List own intents (row 24)
+      parameters:
+        - name: include_archived
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [intents]
+      summary: Declare an intent (row 24)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "402":
+          description: Plan limit reached (§10.4.6)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+  /me/intents/{id}:
+    patch:
+      tags: [intents]
+      summary: Edit or archive an intent (row 24)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    delete:
+      tags: [intents]
+      summary: Delete an intent (row 24)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /me/intent-filters:
+    put:
+      tags: [intents]
+      summary: Inbound intent filters (row 25)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  # ── §10.5 Location-Based Networking (rows 26-27) ─────────────────────
+  /me/location:
+    put:
+      tags: [location]
+      summary: Update location — never echoes coordinates (row 26)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "400":
+          description: Invalid coordinates (§10.5.7)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: Geocode failed, fallback to manual (§10.5.7)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /me/location-preferences:
+    put:
+      tags: [location]
+      summary: Radius, privacy, remote, relocation (row 27)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  # ── §11 Matching & discovery (rows 28-31) ────────────────────────────
+  /discover:
+    get:
+      tags: [discovery]
+      summary: Ranked feed (row 28)
+      parameters:
+        - name: tab
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  /discover/available-now:
+    get:
+      tags: [discovery]
+      summary: Live availability feed (row 29)
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  /matches/{id}/explain:
+    get:
+      tags: [discovery]
+      summary: Sub-score breakdown (row 30)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /matches/{id}/skip:
+    post:
+      tags: [discovery]
+      summary: Not interested, with reason (row 31)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  # ── §10.6 Connections (rows 32-36) ────────────────────────────────────
+  /connections/requests:
+    get:
+      tags: [connections]
+      summary: List sent/received requests (row 34)
+      parameters:
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [received, sent]
+        - name: status
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [connections]
+      summary: Send a connection request (row 32)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "202":
+          description: Queued — recipient's inbound throttle exceeded (§10.6.6)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Placeholder"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /connections/requests/{id}/accept:
+    post:
+      tags: [connections]
+      summary: Accept a request (row 33)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /connections/requests/{id}/reject:
+    post:
+      tags: [connections]
+      summary: Reject a request — silent to sender (row 33)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /connections/requests/{id}/cancel:
+    post:
+      tags: [connections]
+      summary: Withdraw a sent request (row 33)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /connections:
+    get:
+      tags: [connections]
+      summary: List connections (row 35)
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: industry
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [recent, name, score]
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  /connections/{userId}:
+    delete:
+      tags: [connections]
+      summary: Remove a connection — silent (row 35)
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /blocks:
+    post:
+      tags: [connections]
+      summary: Block a user (row 36)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+
+  /blocks/{userId}:
+    delete:
+      tags: [connections]
+      summary: Unblock a user (row 36)
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  # ── §10.7 Messaging (rows 37-45) ──────────────────────────────────────
+  /conversations:
+    get:
+      tags: [messaging]
+      summary: Chat list (row 37)
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+            enum: [all, unread, pinned, archived]
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  /conversations/{id}/messages:
+    get:
+      tags: [messaging]
+      summary: Message history (row 38)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: after_sequence
+          in: query
+          schema:
+            type: integer
+        - name: before_sequence
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+        "403":
+          description: Not a conversation member, or conversation frozen (§10.7.6)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      tags: [messaging]
+      summary: Send message — REST fallback, client_msg_id required (row 39)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "413":
+          description: Attachment too large (§10.7.6)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "415":
+          description: Unsupported media type (§10.7.6)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /messages/{id}:
+    patch:
+      tags: [messaging]
+      summary: Edit own message, within 15 min (row 40)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "409":
+          description: Edit window expired (§10.7.6)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      tags: [messaging]
+      summary: Delete message, for me or everyone (row 40)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [me, everyone]
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+        "410":
+          $ref: "#/components/responses/Gone"
+
+  /messages/{id}/reactions:
+    post:
+      tags: [messaging]
+      summary: React to a message (row 41)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+    delete:
+      tags: [messaging]
+      summary: Remove own reaction (row 41)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  /messages/{id}/forward:
+    post:
+      tags: [messaging]
+      summary: Forward a message, up to 3 conversations (row 42)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+
+  /conversations/{id}/read:
+    post:
+      tags: [messaging]
+      summary: Mark read up to sequence (row 43)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /conversations/{id}/settings:
+    put:
+      tags: [messaging]
+      summary: Pin / mute / archive (row 44)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /conversations/{id}/search:
+    get:
+      tags: [messaging]
+      summary: Search within a conversation (row 45)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  /messages/search:
+    get:
+      tags: [messaging]
+      summary: Search across all conversations (row 45)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  # ── §10.8 Notifications (rows 46-47) ──────────────────────────────────
+  /notifications:
+    get:
+      tags: [notifications]
+      summary: Notification centre (row 46)
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  /notifications/read:
+    put:
+      tags: [notifications]
+      summary: Mark notifications read (row 46)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /notifications/preferences:
+    get:
+      tags: [notifications]
+      summary: Get notification preferences (row 46)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    put:
+      tags: [notifications]
+      summary: Set notification preferences (row 46)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /devices:
+    post:
+      tags: [notifications]
+      summary: Register a push token (row 47)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+    delete:
+      tags: [notifications]
+      summary: Unregister a push token (row 47)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  # ── §10.9 Search & Discovery Surfaces (rows 48-49) ────────────────────
+  /search/people:
+    get:
+      tags: [search]
+      summary: Search + facets (row 48)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+        "400":
+          description: Query too short (§10.9.2)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Premium filter required (§10.9.2)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /me/saved-searches:
+    get:
+      tags: [search]
+      summary: List saved searches (row 49)
+      x-auth: recruiter
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+    post:
+      tags: [search]
+      summary: Create a saved search (row 49)
+      x-auth: recruiter
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+  /me/saved-searches/{id}:
+    patch:
+      tags: [search]
+      summary: Update a saved search (row 49)
+      x-auth: recruiter
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    delete:
+      tags: [search]
+      summary: Delete a saved search (row 49)
+      x-auth: recruiter
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+
+  # ── §10.10 Trust, Safety & Reputation (rows 50-52) ────────────────────
+  /reports:
+    post:
+      tags: [trust-safety]
+      summary: File a report (row 50)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+
+  /me/reputation:
+    get:
+      tags: [trust-safety]
+      summary: Own score + components (row 51)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /appeals:
+    post:
+      tags: [trust-safety]
+      summary: Appeal a moderation action (row 52)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+
+  # ── §17.7 Media Pipeline (rows 53-54) ──────────────────────────────────
+  /media/upload-intent:
+    post:
+      tags: [media]
+      summary: Begin an upload (row 53)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "413":
+          description: Attachment too large (§17.7)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "415":
+          description: Unsupported media type (§17.7)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /media/{id}/commit:
+    post:
+      tags: [media]
+      summary: Commit an uploaded object for processing (row 53)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "202":
+          $ref: "#/components/responses/Accepted"
+
+  /media/{id}/url:
+    get:
+      tags: [media]
+      summary: Signed URL (row 54)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ── §12 AI features (rows 55-56) ───────────────────────────────────────
+  /ai/profile-optimize:
+    post:
+      tags: [ai]
+      summary: AI profile optimisation (row 55)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          description: LLM provider unavailable — degraded mode (§12.12, §21.9)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /ai/resume-review:
+    post:
+      tags: [ai]
+      summary: AI resume review (row 55)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /ai/icebreakers:
+    post:
+      tags: [ai]
+      summary: AI icebreaker suggestions (row 55)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /ai/intro-message:
+    post:
+      tags: [ai]
+      summary: AI intro message draft (row 55)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /ai/summarize:
+    post:
+      tags: [ai]
+      summary: AI conversation summary (row 55)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /ai/career-guidance:
+    post:
+      tags: [ai]
+      summary: AI career guidance (row 55)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /ai/suggestions:
+    get:
+      tags: [ai]
+      summary: Weekly suggestions (row 56)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  # ── §7 Billing (rows 57-59) ─────────────────────────────────────────────
+  /plans:
+    get:
+      tags: [billing]
+      summary: Billing plans (row 57)
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  /me/subscription:
+    get:
+      tags: [billing]
+      summary: Own subscription state (row 57)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /billing/checkout-session:
+    post:
+      tags: [billing]
+      summary: Create a checkout session (row 58)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+
+  /billing/portal:
+    post:
+      tags: [billing]
+      summary: Create a billing portal session (row 58)
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+
+  /billing/cancel:
+    post:
+      tags: [billing]
+      summary: Cancel subscription (row 58)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /webhooks/{provider}:
+    post:
+      tags: [billing]
+      summary: Payment provider webhooks (row 59)
+      security:
+        - webhookSignature: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # ── §20.6 GDPR data export (row 60) ──────────────────────────────────────
+  /me/export:
+    get:
+      tags: [account]
+      summary: GDPR data export status (row 60)
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    post:
+      tags: [account]
+      summary: Request a GDPR data export (row 60)
+      responses:
+        "202":
+          $ref: "#/components/responses/Accepted"
+
+  # ── §17.5 Realtime gateway (row 61) ──────────────────────────────────────
+  /realtime/ticket:
+    post:
+      tags: [realtime]
+      summary: Short-lived WebSocket connection ticket (row 61)
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+
+  # ── §16 Reference data (row 62) ────────────────────────────────────────
+  /taxonomies/{taxonomy}:
+    get:
+      tags: [reference-data]
+      summary: Reference data, cached (row 62)
+      security: []
+      parameters:
+        - name: taxonomy
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [skills, industries, cities, languages, interests]
+        - name: q
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  # ── §14.20 / §20.8 Admin & moderation (rows 63-66) ────────────────────
+  /admin/reports:
+    get:
+      tags: [admin]
+      summary: Moderation queue (row 63)
+      x-auth: mod
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+  /admin/reports/{id}:
+    patch:
+      tags: [admin]
+      summary: Update a report's disposition (row 63)
+      x-auth: mod
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /admin/moderation-actions:
+    post:
+      tags: [admin]
+      summary: Apply a moderation action (row 64)
+      x-auth: mod
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+
+  /admin/config/matching-weights:
+    get:
+      tags: [admin]
+      summary: View matching weight config (row 65)
+      x-auth: admin
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+    put:
+      tags: [admin]
+      summary: Update matching weights — must sum to 1.00 (row 65)
+      x-auth: admin
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Placeholder"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /admin/users/{id}:
+    get:
+      tags: [admin]
+      summary: Investigation — user detail (row 66)
+      x-auth: admin
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /audit-logs:
+    get:
+      tags: [admin]
+      summary: Investigation — audit logs (row 66)
+      x-auth: admin
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+      responses:
+        "200":
+          $ref: "#/components/responses/OkList"
+
+  # ── §21 Probes, Prometheus (row 67) — see apps/api/src/modules/health ──
+  /health:
+    get:
+      tags: [ops]
+      summary: Liveness probe (row 67)
+      security: []
+      x-auth: internal
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+
+  /health/ready:
+    get:
+      tags: [ops]
+      summary: Readiness probe (row 67)
+      security: []
+      x-auth: internal
+      responses:
+        "200":
+          $ref: "#/components/responses/Ok"
+        "503":
+          $ref: "#/components/responses/InternalError"
+
+  /metrics:
+    get:
+      tags: [ops]
+      summary: Prometheus metrics (row 67)
+      security: []
+      x-auth: internal
+      responses:
+        "200":
+          description: Prometheus text exposition format
+          content:
+            text/plain:
+              schema:
+                type: string
