@@ -31,6 +31,40 @@ export const ERROR_CODES = [
   "MESSAGE_DELETED",
   "EDIT_WINDOW_EXPIRED",
   "CONVERSATION_NOT_FOUND",
+
+  // Identity, Authentication & Onboarding (§10.1.7 error tables).
+  "EMAIL_ALREADY_EXISTS",
+  "PHONE_ALREADY_EXISTS",
+  "AGE_RESTRICTED",
+  "PASSWORD_BREACHED",
+  "INVALID_CREDENTIALS",
+  "ACCOUNT_LOCKED",
+  "ACCOUNT_SUSPENDED",
+  "OTP_INVALID",
+  "OTP_EXPIRED",
+  "OTP_MAX_ATTEMPTS",
+  "OTP_RATE_LIMITED",
+  "TOKEN_EXPIRED",
+  "TOKEN_USED",
+  "INVALID_REFRESH_TOKEN",
+  "TOKEN_REUSE_DETECTED",
+  "SESSION_NOT_FOUND",
+
+  // Auth guard / RBAC (§17.4 status gate, §20.3 deny-by-default).
+  "VERIFICATION_REQUIRED",
+  "POLICY_DENIED",
+
+  // OAuth (§10.1.7 endpoint 10, §13 F1).
+  "OAUTH_STATE_INVALID",
+  "OAUTH_PROVIDER_UNKNOWN",
+
+  // Profile (§10.2.9 error table).
+  "PROFILE_NOT_FOUND",
+  "ETAG_MISMATCH",
+  "NAME_CHANGE_LIMIT",
+
+  // Verification ladder (§10.2.5, P7.3).
+  "WORK_EMAIL_DOMAIN_MISMATCH",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

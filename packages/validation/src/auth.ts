@@ -101,3 +101,33 @@ export const passwordResetSchema = z.object({
   token: z.string(),
   password: passwordSchema,
 });
+
+// PRD §10.1.7 endpoint 8 (password/change) — authenticated, so no email/
+// phone identifier is carried in the body; the caller is resolved from
+// the access token.
+export const passwordChangeSchema = z.object({
+  current_password: z.string(),
+  new_password: passwordSchema,
+});
+
+// PRD §10.1.7 endpoint 10 / P5.5: Google/LinkedIn OAuth. `start` and
+// `confirmLink` aren't in the PRD's literal endpoint list — PKCE/state
+// validation need an origination step, and "explicit confirmation, never
+// silent" (§13 F1) needs a way to submit that confirmation — both
+// additions are flagged in the auth service that uses these schemas.
+export const oauthProviderSchema = z.enum(["google", "linkedin"]);
+
+export const oauthStartSchema = z.object({
+  redirect_uri: z.string().url(),
+});
+
+export const oauthCallbackSchema = z.object({
+  code: z.string(),
+  state: z.string(),
+  accepted_terms_version: z.string(),
+});
+
+export const oauthConfirmLinkSchema = z.object({
+  link_token: z.string(),
+  password: z.string(),
+});

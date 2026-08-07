@@ -15,7 +15,10 @@ import {
 import { users } from "./users";
 
 // PRD §16.3 "REPUTATION, MEDIA, BILLING" (plans, subscriptions) — mirrors
-// migrations/0003_matching_safety_billing_audit.sql exactly.
+// migrations/0003_matching_safety_billing_audit.sql, plus subscriptions.
+// user_id relaxed to nullable + ON DELETE SET NULL by
+// migrations/0007_erasure_retention_fks.sql (§20.6: financial records are
+// retained 7 years, not cascade-deleted with the user).
 export const plans = pgTable("plans", {
   code: text("code").primaryKey(),
   name: text("name").notNull(),
@@ -31,9 +34,7 @@ export const subscriptions = pgTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`public.uuidv7()`),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     planCode: text("plan_code")
       .notNull()
       .references(() => plans.code),

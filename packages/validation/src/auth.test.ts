@@ -5,6 +5,7 @@ import {
   FULL_NAME_ERROR,
   emailSchema,
   fullNameSchema,
+  passwordChangeSchema,
   registerSchema,
 } from "./auth";
 
@@ -98,6 +99,24 @@ describe("registerSchema", () => {
       full_name: "Ananya Rao",
       date_of_birth: "2015-04-11",
       accepted_terms_version: "2026-06-01",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("passwordChangeSchema", () => {
+  it("accepts a current password and a policy-valid new password", () => {
+    const result = passwordChangeSchema.safeParse({
+      current_password: "whatever-the-user-typed",
+      new_password: "correct-horse-9",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a new password that fails the structural policy", () => {
+    const result = passwordChangeSchema.safeParse({
+      current_password: "whatever",
+      new_password: "short",
     });
     expect(result.success).toBe(false);
   });

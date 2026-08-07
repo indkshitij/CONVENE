@@ -4,8 +4,10 @@ import {
   countEmoji,
   countUrls,
   socialLinkUrlSchema,
+  timezoneSchema,
   type SocialLinkProvider,
 } from "./common";
+import { emailSchema, fullNameSchema } from "./auth";
 
 // PRD §10.2.7 `headline`: "10–120 chars; no email/phone/URL; ≤ 2 emoji;
 // not all-caps."
@@ -94,6 +96,135 @@ export function experienceEntrySchema(dob: Date, now: Date = new Date()) {
     });
 }
 
+// PRD §10.2.9 endpoint 15 (POST/PATCH .../experience). Create requires
+// every field the DB does; update makes them all optional — a partial
+// PATCH validates the shape of whatever fields ARE present, and the
+// cross-field date/is_current consistency check (experienceEntrySchema's
+// superRefine, above) runs in the service against the *merged* row, since
+// a partial update might not even touch a date field.
+export const employmentTypeSchema = z.enum([
+  "full_time",
+  "part_time",
+  "contract",
+  "freelance",
+  "self_employed",
+  "student",
+  "unemployed",
+  "founder",
+]);
+
+export function experienceCreateSchema(dob: Date, now: Date = new Date()) {
+  return z
+    .object({
+      company_name: z.string().min(1).max(100),
+      title: z.string().min(1).max(100),
+      employment_type: employmentTypeSchema.optional(),
+      location_text: z.string().max(120).optional(),
+      description: z.string().max(1200).optional(),
+    })
+    .and(experienceEntrySchema(dob, now));
+}
+
+export const experienceUpdateSchema = z
+  .object({
+    company_name: z.string().min(1).max(100).optional(),
+    title: z.string().min(1).max(100).optional(),
+    employment_type: employmentTypeSchema.nullable().optional(),
+    location_text: z.string().max(120).nullable().optional(),
+    description: z.string().max(1200).nullable().optional(),
+    start_date: z.string().optional(),
+    end_date: z.string().nullable().optional(),
+    is_current: z.boolean().optional(),
+    position: z.number().int().min(0).optional(),
+  })
+  .strict();
+
+export const educationCreateSchema = z
+  .object({
+    school: z.string().min(1).max(150),
+    degree: z.string().max(100).optional(),
+    field_of_study: z.string().max(100).optional(),
+    start_date: z.string().nullable().optional(),
+    end_date: z.string().nullable().optional(),
+    description: z.string().max(500).optional(),
+  })
+  .strict();
+
+export const educationUpdateSchema = educationCreateSchema.partial().extend({
+  position: z.number().int().min(0).optional(),
+});
+
+export const CREDENTIAL_URL_ERROR = "That credential URL doesn't look right";
+
+export const certificationCreateSchema = z
+  .object({
+    name: z.string().min(1).max(150),
+    issuer: z.string().min(1).max(150),
+    issued_at: z.string().nullable().optional(),
+    expires_at: z.string().nullable().optional(),
+    credential_url: z
+      .string()
+      .refine((value) => value.startsWith("https://"), CREDENTIAL_URL_ERROR)
+      .nullable()
+      .optional(),
+  })
+  .strict();
+
+export const certificationUpdateSchema = certificationCreateSchema.partial().extend({
+  position: z.number().int().min(0).optional(),
+});
+
+// PRD §10.2.2 `interests[]`: "≤ 15." No dedicated validation row exists in
+// §10.2.7 the way skills/headline/about do — the limit itself is the only
+// stated rule.
+export const INTERESTS_ERROR = "You've reached the 15-interest limit";
+
+export const interestsListSchema = z
+  .array(z.string().min(2).max(50))
+  .max(15, INTERESTS_ERROR)
+  .refine(
+    (values) => new Set(values.map((v) => v.toLowerCase())).size === values.length,
+    INTERESTS_ERROR,
+  );
+
+// PRD §10.2.2 `languages[]`: "≤ 8." Proficiency values match the DB's own
+// CHECK constraint (migrations/0001_profile_geo.sql's user_languages
+// table) — "basic"/"conversational"/"fluent"/"native" — not
+// packages/matching's independently-built "professional" vocabulary (see
+// profile.service.ts's own note reconciling the two).
+export const LANGUAGES_ERROR = "You've reached the 8-language limit";
+
+export const languageProficiencySchema = z.enum(["basic", "conversational", "fluent", "native"]);
+
+export const languagesListSchema = z
+  .array(z.object({ code: z.string().length(2), proficiency: languageProficiencySchema }))
+  .max(8, LANGUAGES_ERROR)
+  .refine(
+    (values) => new Set(values.map((v) => v.code.toLowerCase())).size === values.length,
+    LANGUAGES_ERROR,
+  );
+
+// PRD §10.2.9: `PUT /profiles/me/skills — full replace:
+// {skills:[{name,proficiency,years}]}`. Mirrors skillsListSchema's own
+// limits (≤30, deduplicated case-insensitively) but over the `.name` of
+// each entry object rather than raw strings, since this endpoint's body
+// carries proficiency/years alongside the name.
+export const skillEntrySchema = z.object({
+  name: skillSchema,
+  proficiency: z.enum(["beginner", "intermediate", "advanced", "expert"]).nullable().optional(),
+  years: z.number().min(0).max(60).nullable().optional(),
+});
+
+export const skillEntryListSchema = z
+  .array(skillEntrySchema)
+  .max(30, SKILL_ERROR)
+  .refine(
+    (entries) => new Set(entries.map((e) => e.name.toLowerCase())).size === entries.length,
+    SKILL_ERROR,
+  );
+
+export const skillsReplaceSchema = z.object({ skills: skillEntryListSchema });
+
 // PRD §10.2.7 `portfolio.url`: "https only; not a known malware host; HEAD
 // returns < 400." The malware-host check (a dynamic, externally-maintained
 // list) and the HEAD-reachability check are both async, external calls —
@@ -109,6 +240,24 @@ export const portfolioUrlSchema = z.string().refine((value) => {
     return false;
   }
 }, PORTFOLIO_URL_ERROR);
+
+// PRD §10.2.9 endpoint 15 (POST/PATCH .../portfolio).
+export const portfolioItemCreateSchema = z
+  .object({
+    title: z.string().min(1).max(150),
+    url: portfolioUrlSchema,
+    description: z.string().max(500).optional(),
+  })
+  .strict();
+
+export const portfolioItemUpdateSchema = z
+  .object({
+    title: z.string().min(1).max(150).optional(),
+    url: portfolioUrlSchema.optional(),
+    description: z.string().max(500).nullable().optional(),
+    position: z.number().int().min(0).optional(),
+  })
+  .strict();
 
 // PRD §10.2.2: social_links has "7 known keys" (enumerated as an
 // assumption in common.ts's SOCIAL_LINK_PROVIDERS).
@@ -159,3 +308,61 @@ export const resumeMetadataSchema = z
   .object({ mimeType: z.string(), sizeBytes: z.number() })
   .refine((meta) => RESUME_MIME_TYPES.has(meta.mimeType), RESUME_ERROR)
   .refine((meta) => meta.sizeBytes <= RESUME_MAX_BYTES, RESUME_ERROR);
+
+// PRD §10.2.9: `PATCH /profiles/me — partial update, optimistic
+// concurrency via If-Match`. Only the scalar profile fields this endpoint
+// owns — skills/interests/languages/experience/education/certifications/
+// portfolio each have their own dedicated endpoint (§10.2.9's own contract
+// list) and are P7.2's scope, not this one's. `full_name` lives on `users`,
+// not `profiles`, but is included here since it's part of the same PATCH
+// body per the contract's single `PATCH /profiles/me` shape; BR-PROF-07's
+// 2-per-90-days limit is enforced by the service, not this schema.
+export const profileUpdateSchema = z
+  .object({
+    full_name: fullNameSchema.optional(),
+    headline: headlineSchema.optional(),
+    about: aboutSchema.nullable().optional(),
+    industry_id: z.number().int().optional(),
+    job_title: z.string().min(2).max(100).optional(),
+    company_name: z.string().max(100).nullable().optional(),
+    employment_type: z
+      .enum([
+        "full_time",
+        "part_time",
+        "contract",
+        "freelance",
+        "self_employed",
+        "student",
+        "unemployed",
+        "founder",
+      ])
+      .nullable()
+      .optional(),
+    years_experience: z.number().min(0).max(60).optional(),
+    years_experience_override: z.boolean().optional(),
+    timezone: timezoneSchema.optional(),
+    remote_preference: z.enum(["onsite", "hybrid", "remote", "any"]).optional(),
+    open_to_relocate: z.boolean().optional(),
+    social_links: socialLinksSchema.optional(),
+  })
+  .strict();
+
+// PRD §10.2.5 L3 / §10.2.9 (POST /verification/work-email,
+// /verification/work-email/confirm).
+export const workEmailSendSchema = z.object({ target: emailSchema }).strict();
+
+export const WORK_EMAIL_CODE_ERROR = "Enter the 6-digit code";
+export const workEmailConfirmSchema = z
+  .object({ code: z.string().regex(/^\d{6}$/, WORK_EMAIL_CODE_ERROR) })
+  .strict();
+
+// PRD §10.2.5 L4 / §20.4: "only the provider's verification reference and
+// result" — this schema's own shape is the enforcement mechanism for that
+// constraint: there is no field here a document or its data could occupy.
+export const governmentIdSubmissionSchema = z
+  .object({
+    provider: z.string().min(1).max(100),
+    provider_reference: z.string().min(1).max(200),
+    result: z.enum(["pending", "approved", "rejected"]),
+  })
+  .strict();

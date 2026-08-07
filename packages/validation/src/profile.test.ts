@@ -5,16 +5,27 @@ import {
   EXPERIENCE_END_DATE_ERROR,
   EXPERIENCE_START_DATE_ERROR,
   HEADLINE_ERROR,
+  INTERESTS_ERROR,
+  LANGUAGES_ERROR,
   PORTFOLIO_URL_ERROR,
   RESUME_ERROR,
   SKILL_ERROR,
   aboutSchema,
   avatarMetadataSchema,
+  certificationCreateSchema,
+  educationCreateSchema,
+  experienceCreateSchema,
   experienceEntrySchema,
+  experienceUpdateSchema,
   headlineSchema,
+  interestsListSchema,
+  languagesListSchema,
+  portfolioItemCreateSchema,
   portfolioUrlSchema,
+  profileUpdateSchema,
   resumeMetadataSchema,
   skillsListSchema,
+  skillsReplaceSchema,
   socialLinksSchema,
 } from "./profile";
 
@@ -277,5 +288,214 @@ describe("resumeMetadataSchema", () => {
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.message).toBe(RESUME_ERROR);
+  });
+});
+
+describe("profileUpdateSchema", () => {
+  it("accepts a partial update with just one field", () => {
+    const result = profileUpdateSchema.safeParse({
+      headline: "Backend engineer building payments infra",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts an empty object (no-op update)", () => {
+    expect(profileUpdateSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("rejects an unknown field", () => {
+    const result = profileUpdateSchema.safeParse({ coordinates: { lat: 1, lng: 2 } });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid headline within a partial update", () => {
+    const result = profileUpdateSchema.safeParse({ headline: "short" });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts a full set of scalar fields", () => {
+    const result = profileUpdateSchema.safeParse({
+      full_name: "Ananya Rao",
+      headline: "Director of Data Science, NLP & applied LLMs",
+      about: "Sixteen years building NLP systems.",
+      industry_id: 3,
+      job_title: "Director of Data Science",
+      company_name: "Xenon Labs",
+      employment_type: "full_time",
+      years_experience: 16,
+      years_experience_override: false,
+      timezone: "Asia/Kolkata",
+      remote_preference: "hybrid",
+      open_to_relocate: false,
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("experienceCreateSchema", () => {
+  const dob = new Date("2003-04-11");
+  const now = new Date("2026-08-02");
+
+  it("accepts a valid current-role entry", () => {
+    const result = experienceCreateSchema(dob, now).safeParse({
+      company_name: "Xenon Labs",
+      title: "Director of Data Science",
+      start_date: "2021-03-01",
+      end_date: null,
+      is_current: true,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a missing company_name", () => {
+    const result = experienceCreateSchema(dob, now).safeParse({
+      title: "Director",
+      start_date: "2021-03-01",
+      end_date: null,
+      is_current: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("still enforces the cross-field date rule inherited from experienceEntrySchema", () => {
+    const result = experienceCreateSchema(dob, now).safeParse({
+      company_name: "Xenon Labs",
+      title: "Director",
+      start_date: "2021-03-01",
+      end_date: "2020-01-01",
+      is_current: false,
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("experienceUpdateSchema", () => {
+  it("accepts a partial update touching only one field", () => {
+    expect(experienceUpdateSchema.safeParse({ title: "Senior Director" }).success).toBe(true);
+  });
+
+  it("rejects an unknown field", () => {
+    expect(experienceUpdateSchema.safeParse({ coordinates: { lat: 1, lng: 2 } }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("educationCreateSchema", () => {
+  it("accepts a minimal valid entry", () => {
+    expect(educationCreateSchema.safeParse({ school: "IIT Madras" }).success).toBe(true);
+  });
+
+  it("rejects a missing school", () => {
+    expect(educationCreateSchema.safeParse({ degree: "M.Tech" }).success).toBe(false);
+  });
+});
+
+describe("certificationCreateSchema", () => {
+  it("accepts a valid entry", () => {
+    const result = certificationCreateSchema.safeParse({
+      name: "AWS Certified Solutions Architect",
+      issuer: "Amazon Web Services",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a non-https credential_url", () => {
+    const result = certificationCreateSchema.safeParse({
+      name: "Cert",
+      issuer: "Issuer",
+      credential_url: "http://example.com/cert",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("portfolioItemCreateSchema", () => {
+  it("accepts a valid entry", () => {
+    const result = portfolioItemCreateSchema.safeParse({
+      title: "Talk: LLM evals in production",
+      url: "https://example.com/talk",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a non-https url", () => {
+    const result = portfolioItemCreateSchema.safeParse({
+      title: "Talk",
+      url: "http://example.com/talk",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe(PORTFOLIO_URL_ERROR);
+  });
+});
+
+describe("interestsListSchema", () => {
+  it("accepts up to 15 interests", () => {
+    expect(interestsListSchema.safeParse(["Cycling", "Mentoring"]).success).toBe(true);
+  });
+
+  it("rejects more than 15 interests", () => {
+    const result = interestsListSchema.safeParse(
+      Array.from({ length: 16 }, (_, i) => `Interest${i}`),
+    );
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe(INTERESTS_ERROR);
+  });
+
+  it("rejects case-insensitive duplicates", () => {
+    const result = interestsListSchema.safeParse(["Cycling", "cycling"]);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe(INTERESTS_ERROR);
+  });
+});
+
+describe("languagesListSchema", () => {
+  it("accepts a valid list", () => {
+    const result = languagesListSchema.safeParse([{ code: "en", proficiency: "native" }]);
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects more than 8 languages", () => {
+    const result = languagesListSchema.safeParse(
+      Array.from({ length: 9 }, () => ({ code: "en", proficiency: "native" as const })),
+    );
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an unrecognised proficiency value", () => {
+    const result = languagesListSchema.safeParse([{ code: "en", proficiency: "professional" }]);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects duplicate language codes", () => {
+    const result = languagesListSchema.safeParse([
+      { code: "en", proficiency: "native" },
+      { code: "en", proficiency: "basic" },
+    ]);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe(LANGUAGES_ERROR);
+  });
+});
+
+describe("skillsReplaceSchema", () => {
+  it("accepts a valid full-replace payload", () => {
+    const result = skillsReplaceSchema.safeParse({
+      skills: [{ name: "NLP", proficiency: "expert", years: 9 }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects more than 30 skill entries", () => {
+    const result = skillsReplaceSchema.safeParse({
+      skills: Array.from({ length: 31 }, (_, i) => ({ name: `Skill${i}` })),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects duplicate skill names case-insensitively", () => {
+    const result = skillsReplaceSchema.safeParse({
+      skills: [{ name: "React" }, { name: "react" }],
+    });
+    expect(result.success).toBe(false);
   });
 });

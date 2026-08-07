@@ -3,6 +3,7 @@ import {
   check,
   date,
   index,
+  integer,
   jsonb,
   pgTable,
   smallint,
@@ -14,7 +15,10 @@ import {
 import { citext } from "./custom-types";
 import { userRole, userStatus } from "./enums";
 
-// PRD §16.3 IDENTITY — mirrors migrations/0000_identity.sql exactly.
+// PRD §16.3 IDENTITY — mirrors migrations/0000_identity.sql, plus
+// token_version added by migrations/0004_auth_session_security.sql (§17.4)
+// and name_change_window_started_at added by
+// migrations/0008_profile_search_and_name_change.sql (BR-PROF-07).
 export const users = pgTable(
   "users",
   {
@@ -35,9 +39,11 @@ export const users = pgTable(
     termsVersion: text("terms_version").notNull(),
     lastActiveAt: timestamp("last_active_at", { withTimezone: true }),
     nameChangeCount: smallint("name_change_count").notNull().default(0),
+    nameChangeWindowStartedAt: timestamp("name_change_window_started_at", { withTimezone: true }),
     deletionRequestedAt: timestamp("deletion_requested_at", { withTimezone: true }),
     purgeAt: timestamp("purge_at", { withTimezone: true }),
     attribution: jsonb("attribution").notNull().default({}),
+    tokenVersion: integer("token_version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

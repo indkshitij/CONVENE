@@ -1,4 +1,5 @@
 import { Controller, Get, Res } from "@nestjs/common";
+import { Public } from "../../common/auth/jwt.guard";
 import { PostgresService } from "../../infra/postgres/postgres.service";
 import { RedisService } from "../../infra/redis/redis.service";
 import { metricsRegistry } from "../../infra/telemetry/metrics";
@@ -21,11 +22,13 @@ export class HealthController {
   ) {}
 
   @Get("health")
+  @Public()
   liveness(): { status: "ok" } {
     return { status: "ok" };
   }
 
   @Get("health/ready")
+  @Public()
   async readiness(@Res({ passthrough: true }) res: ResponseLike): Promise<Record<string, unknown>> {
     const [postgresUp, redisUp] = await Promise.all([this.postgres.ping(), this.redis.ping()]);
     const ready = postgresUp && redisUp;
@@ -41,6 +44,7 @@ export class HealthController {
   }
 
   @Get("metrics")
+  @Public()
   async metrics(@Res({ passthrough: true }) res: ResponseLike): Promise<string> {
     res.setHeader("Content-Type", metricsRegistry.contentType);
     return metricsRegistry.metrics();

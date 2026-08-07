@@ -18,6 +18,17 @@ export {
   type RefreshToken,
   type NewRefreshToken,
 } from "./auth";
+export { otpChallenges, type OtpChallenge, type NewOtpChallenge } from "./otp-challenges";
+export {
+  verificationTokens,
+  type VerificationToken,
+  type NewVerificationToken,
+} from "./verification-tokens";
+export {
+  identityVerifications,
+  type IdentityVerification,
+  type NewIdentityVerification,
+} from "./identity-verifications";
 export { countries, states, cities, type Country, type State, type City } from "./geo";
 export { media, type Media, type NewMedia } from "./media";
 export {

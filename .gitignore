@@ -29,6 +29,9 @@ docs
 .DS_Store
 *.pem
 
+# local-dev JWKS signing keys (P5.1) — never commit real key material
+.keys/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

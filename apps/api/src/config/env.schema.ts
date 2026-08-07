@@ -13,6 +13,19 @@ export const envSchema = z.object({
   REDIS_URL: z.string().min(1, "REDIS_URL is required"),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().optional(),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  // PRD §17.4/P5.1: "Signing keys from a KMS abstraction (local file
+  // provider in dev)." Production points this at a KMS-backed KeyProvider
+  // implementation instead; this path is only ever read by the local-file
+  // dev provider.
+  JWKS_KEYS_PATH: z.string().default(".keys/jwks-keys.json"),
+  // PRD §10.1.7 endpoint 10 / P5.5: Google and LinkedIn OAuth. Optional —
+  // most dev/test environments never configure real provider credentials;
+  // the OAuth module throws a clear error at call time (not at boot) if a
+  // route needing a specific provider's credentials is hit without them.
+  GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
+  LINKEDIN_OAUTH_CLIENT_ID: z.string().optional(),
+  LINKEDIN_OAUTH_CLIENT_SECRET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

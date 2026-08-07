@@ -19,11 +19,14 @@ import { messageType } from "./enums";
 import { connections } from "./connections";
 import { users } from "./users";
 
-// PRD §10.7.7 — mirrors migrations/0002_intents_availability_messaging.sql
-// exactly. `messages` is PARTITION BY RANGE (created_at) in the raw SQL;
-// drizzle-orm has no partitioning DSL, so this is a plain-table mirror for
-// typed queries only — the migration/create-partitions.ts own the actual
-// partitioned structure.
+// PRD §10.7.7 — mirrors migrations/0002_intents_availability_messaging.sql,
+// plus messages.sender_id relaxed to nullable + ON DELETE SET NULL by
+// migrations/0007_erasure_retention_fks.sql (§20.6: the counterparty's
+// copy of a shared message is retained and anonymised, not destroyed,
+// when the sender is hard-purged). `messages` is PARTITION BY RANGE
+// (created_at) in the raw SQL; drizzle-orm has no partitioning DSL, so
+// this is a plain-table mirror for typed queries only — the
+// migration/create-partitions.ts own the actual partitioned structure.
 export const conversations = pgTable("conversations", {
   id: uuid("id")
     .primaryKey()
@@ -67,9 +70,7 @@ export const messages = pgTable(
     conversationId: uuid("conversation_id")
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
-    senderId: uuid("sender_id")
-      .notNull()
-      .references(() => users.id),
+    senderId: uuid("sender_id").references(() => users.id, { onDelete: "set null" }),
     clientMsgId: uuid("client_msg_id").notNull(),
     sequence: bigint("sequence", { mode: "number" }).notNull(),
     type: messageType("type").notNull().default("text"),

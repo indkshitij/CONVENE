@@ -30,6 +30,7 @@ const fakeEnv: Env = {
   DATABASE_URL: "postgres://convene:convene@localhost:5432/convene",
   REDIS_URL: "redis://localhost:6379",
   LOG_LEVEL: "info",
+  JWKS_KEYS_PATH: ".keys/jwks-keys.json",
 };
 
 // P3.3 acceptance: "stop Redis in a test and assert /health/ready returns

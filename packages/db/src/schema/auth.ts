@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  char,
   check,
   index,
   pgTable,
@@ -45,6 +46,10 @@ export const refreshTokens = pgTable(
     familyId: uuid("family_id").notNull(),
     tokenHash: text("token_hash").notNull().unique(),
     deviceFingerprint: text("device_fingerprint").notNull(),
+    // P5.3/migrations/0005_refresh_sessions.sql — a human-readable label
+    // and coarse country for the session-list endpoint (§10.1.7 #9).
+    deviceLabel: text("device_label"),
+    ipCountry: char("ip_country", { length: 2 }),
     parentId: uuid("parent_id").references((): AnyPgColumn => refreshTokens.id),
     usedAt: timestamp("used_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),

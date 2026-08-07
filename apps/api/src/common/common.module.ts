@@ -1,5 +1,10 @@
 import { Module } from "@nestjs/common";
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
+import { AuthModule } from "../modules/auth/auth.module";
+import { AuthContextModule } from "./auth/auth-context.module";
+import { JwtAuthGuard } from "./auth/jwt.guard";
+import { PolicyGuard } from "./auth/policy.guard";
+import { RolesGuard } from "./auth/roles.guard";
 import { ErrorFilter } from "./errors/error.filter";
 import { EtagInterceptor } from "./interceptors/etag.interceptor";
 import { IdempotencyInterceptor, IdempotencyStore } from "./interceptors/idempotency.interceptor";
@@ -28,11 +33,20 @@ import { RedisIdempotencyStore } from "../infra/redis/redis-idempotency-store";
 // @Global, so RedisService is available without importing it) —
 // InMemoryIdempotencyStore remains available for tests that don't want a
 // Redis dependency (see common/interceptors/interceptors.test.ts).
+// P5.4/§20.3: JwtAuthGuard → RolesGuard → PolicyGuard, in that order —
+// each later guard depends on `request.authContext` (or the role/policy
+// metadata) the earlier one establishes. RateLimitGuard stays first since
+// it's the cheapest check and shouldn't wait on a JWT verification for a
+// request that's about to be 429'd anyway.
 @Module({
+  imports: [AuthModule, AuthContextModule],
   providers: [
     { provide: IdempotencyStore, useClass: RedisIdempotencyStore },
     { provide: APP_FILTER, useClass: ErrorFilter },
     { provide: APP_GUARD, useClass: RateLimitGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PolicyGuard },
     { provide: APP_INTERCEPTOR, useClass: RequestContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: IdempotencyInterceptor },
     { provide: APP_INTERCEPTOR, useClass: EtagInterceptor },

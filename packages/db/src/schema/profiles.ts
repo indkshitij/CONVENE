@@ -35,19 +35,22 @@ export const industries = pgTable("industries", {
     .default(sql`'{}'::integer[]`),
 });
 
-// PRD §16.3 PROFILE — mirrors migrations/0001_profile_geo.sql exactly.
+// PRD §16.3 PROFILE — mirrors migrations/0001_profile_geo.sql, plus
+// headline/job_title/timezone relaxed to nullable by
+// migrations/0004_auth_session_security.sql (a profiles row is created at
+// registration, Step 1 of onboarding, before these Step-2/Step-5 fields exist).
 export const profiles = pgTable(
   "profiles",
   {
     userId: uuid("user_id")
       .primaryKey()
       .references(() => users.id, { onDelete: "cascade" }),
-    headline: varchar("headline", { length: 120 }).notNull(),
+    headline: varchar("headline", { length: 120 }),
     about: text("about"),
     avatarMediaId: uuid("avatar_media_id").references(() => media.id, { onDelete: "set null" }),
     resumeMediaId: uuid("resume_media_id").references(() => media.id, { onDelete: "set null" }),
     industryId: integer("industry_id").references(() => industries.id),
-    jobTitle: varchar("job_title", { length: 100 }).notNull(),
+    jobTitle: varchar("job_title", { length: 100 }),
     companyName: varchar("company_name", { length: 100 }),
     companyVerified: boolean("company_verified").notNull().default(false),
     employmentType: employmentType("employment_type"),
@@ -58,7 +61,7 @@ export const profiles = pgTable(
     coordinates: geographyPoint("coordinates"),
     geohash5: char("geohash_5", { length: 5 }),
     geohash3: char("geohash_3", { length: 3 }),
-    timezone: text("timezone").notNull(),
+    timezone: text("timezone"),
     locationSource: text("location_source"),
     locationUpdatedAt: timestamp("location_updated_at", { withTimezone: true }),
     locationPrivacy: locPrivacy("location_privacy").notNull().default("city_only"),

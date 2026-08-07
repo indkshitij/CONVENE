@@ -46,6 +46,15 @@ export const RATE_LIMIT_POLICIES = {
     keyDimensions: ["ip"],
     notes: "Signup/login paths use the tighter identifier/IP-scoped policies below instead.",
   },
+  // PRD §10.1.7's register error table: "429 RATE_LIMITED | > 5
+  // registrations/hour/IP." Not in the §17.6 matrix (that table starts at
+  // login); added here since P5.2 is the phase that actually needs it.
+  "register-ip": {
+    limit: 5,
+    windowSeconds: 60 * 60,
+    keyDimensions: ["ip"],
+    notes: "",
+  },
   "login-attempts-identifier": {
     limit: 5,
     windowSeconds: 15 * 60,

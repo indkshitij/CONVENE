@@ -3,7 +3,10 @@ import { check, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm
 import { users } from "./users";
 
 // PRD §16.3 "SAFETY & AUDIT" (reports, moderation_actions) — mirrors
-// migrations/0003_matching_safety_billing_audit.sql exactly.
+// migrations/0003_matching_safety_billing_audit.sql, plus
+// moderation_actions.target_user_id relaxed to nullable + ON DELETE SET
+// NULL by migrations/0007_erasure_retention_fks.sql (§20.6: upheld safety
+// records are retained, not cascade-deleted with the user).
 export const reports = pgTable(
   "reports",
   {
@@ -42,9 +45,7 @@ export const moderationActions = pgTable(
     id: uuid("id")
       .primaryKey()
       .default(sql`public.uuidv7()`),
-    targetUserId: uuid("target_user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    targetUserId: uuid("target_user_id").references(() => users.id, { onDelete: "set null" }),
     reportId: uuid("report_id").references(() => reports.id),
     adminId: uuid("admin_id").notNull(),
     action: text("action").notNull(),

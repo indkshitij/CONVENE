@@ -71,6 +71,25 @@ describe("RequestContextInterceptor / EtagInterceptor / IdempotencyInterceptor",
     expect(first.headers.etag).toBe(second.headers.etag);
   });
 
+  it("returns an empty 304 when If-None-Match matches the current ETag", async () => {
+    const first = await request(app.getHttpServer()).get("/test/echo");
+    const etag = first.headers.etag as string;
+
+    const second = await request(app.getHttpServer()).get("/test/echo").set("If-None-Match", etag);
+
+    expect(second.status).toBe(304);
+    expect(second.text).toBe("");
+  });
+
+  it("returns the full 200 body when If-None-Match doesn't match", async () => {
+    const response = await request(app.getHttpServer())
+      .get("/test/echo")
+      .set("If-None-Match", '"stale-etag-value"');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ hello: "world" });
+  });
+
   it("replays a stored response for a repeated Idempotency-Key instead of re-running the handler", async () => {
     callCount = 0;
     const key = "test-idempotency-key-1";

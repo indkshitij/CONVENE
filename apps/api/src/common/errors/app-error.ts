@@ -49,6 +49,12 @@ export class GoneAppError extends AppError {
   readonly httpStatus = 410;
 }
 
+// PRD §10.1.7: `423 ACCOUNT_LOCKED` (BR-AUTH-07's exponential lockout) —
+// the only route in scope so far that needs this status.
+export class LockedAppError extends AppError {
+  readonly httpStatus = 423;
+}
+
 export class ValidationAppError extends AppError {
   readonly httpStatus = 422;
 }

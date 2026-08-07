@@ -1,3 +1,9 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# argon2 (P5.1, §20.2 password hashing) needs its native bindings compiled
+# via a postinstall script — pnpm blocks install scripts by default, so
+# it's explicitly allowlisted here rather than approved interactively.
+onlyBuiltDependencies:
+  - argon2
