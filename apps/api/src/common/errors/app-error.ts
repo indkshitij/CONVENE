@@ -45,6 +45,12 @@ export class ConflictAppError extends AppError {
   readonly httpStatus = 409;
 }
 
+// PRD §10.4.6: `402 PLAN_LIMIT_REACHED` — the first route in scope that
+// needs this status (BR-INT-02's active-intent limits by plan).
+export class PaymentRequiredAppError extends AppError {
+  readonly httpStatus = 402;
+}
+
 export class GoneAppError extends AppError {
   readonly httpStatus = 410;
 }

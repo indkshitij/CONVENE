@@ -18,6 +18,19 @@ export const colors = {
   violetGradient: "#e4ccff",
   aquaGradient: "#c2e9ff",
   peachGradient: "#ffd1b8",
+  // docs/design.md §15 (authenticated-product design system, a separate
+  // token source from MAIN_DESIGN.md above) — `--danger-600`/`--danger-100`
+  // light-mode values. P20.1 is the first screen (auth forms) explicitly
+  // governed by design.md rather than MAIN_DESIGN.md, and needed an error
+  // color that didn't exist anywhere in this file yet.
+  dangerText: "#b91c1c",
+  dangerTint: "#fee2e2",
+  // docs/design.md §15's `--warning-600`/`--warning-100` light-mode
+  // values. `--availability-busy` (availability.ts) already equals
+  // `--warning-600`'s hex, so only the tint (banner background) is new
+  // here — P21.1's T-5min expiring-soon banner is the first UI that
+  // needs a warning surface, not just a warning text/icon color.
+  warningTint: "#fef3c7",
 } as const;
 
 export const gradients = {

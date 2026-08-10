@@ -7,7 +7,9 @@ import {
   pgTable,
   primaryKey,
   smallint,
+  text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -45,8 +47,33 @@ export const feedImpressions = pgTable(
     count: smallint("count").notNull().default(1),
     interacted: boolean("interacted").notNull().default(false),
     lastShownAt: timestamp("last_shown_at", { withTimezone: true }).notNull().defaultNow(),
+    // P12.3 / §11.11: "Record impressions with the expansion stage and
+    // score band" for the fairness audit query.
+    expansionStage: smallint("expansion_stage"),
+    scoreBand: text("score_band"),
   },
   (table) => [primaryKey({ columns: [table.userId, table.candidateId] })],
+);
+
+// P12.3 / AD-8 — see migrations/0013's own comment for the full
+// explanation of why this table (not a real Flagsmith call) is what this
+// codebase's default RemoteConfigProvider reads/writes.
+export const matchingWeightConfigs = pgTable(
+  "matching_weight_configs",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`public.uuidv7()`),
+    weights: jsonb("weights").notNull(),
+    isActive: boolean("is_active").notNull().default(false),
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("uq_matching_weight_configs_active")
+      .on(table.isActive)
+      .where(sql`${table.isActive}`),
+  ],
 );
 
 // NOT GIVEN EXPLICIT DDL IN THE PRD — see the migration for the full
@@ -97,3 +124,5 @@ export type FeedImpression = typeof feedImpressions.$inferSelect;
 export type ProfileView = typeof profileViews.$inferSelect;
 export type SavedSearch = typeof savedSearches.$inferSelect;
 export type NewSavedSearch = typeof savedSearches.$inferInsert;
+export type MatchingWeightConfig = typeof matchingWeightConfigs.$inferSelect;
+export type NewMatchingWeightConfig = typeof matchingWeightConfigs.$inferInsert;

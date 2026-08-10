@@ -77,6 +77,14 @@ export const forwardConversationIdsSchema = z
   .min(1)
   .max(3, FORWARD_CONVERSATIONS_ERROR);
 
+export const forwardMessageSchema = z.object({
+  conversation_ids: forwardConversationIdsSchema,
+});
+
+export const reactToMessageSchema = z.object({
+  emoji: reactionEmojiSchema,
+});
+
 // PRD §10.7.3 "Edit": "Own text messages only, within 15 min, max 3
 // edits." Ownership, the 15-minute window, and the edit count are all
 // state the message row carries (author, created_at, edit_count) — not
@@ -84,6 +92,22 @@ export const forwardConversationIdsSchema = z
 // body's shape; the messaging service enforces the rest at request time.
 export const editMessageSchema = z.object({
   body: messageBodySchema,
+});
+
+// PRD §10.7.6 "POST /conversations/:id/read { up_to_sequence }." §10.7.9
+// edge case 12 ("last_read_seq moves monotonically forward only") is
+// enforced by the service/repository (GREATEST), not here — this only
+// validates the shape.
+export const markReadSchema = z.object({
+  up_to_sequence: z.number().int().min(0),
+});
+
+// PRD §10.7.6 "PATCH /conversations/:id { is_pinned, muted_until,
+// is_archived }." All optional — a partial update, like PATCH implies.
+export const updateConversationSettingsSchema = z.object({
+  is_pinned: z.boolean().optional(),
+  muted_until: z.string().datetime().nullable().optional(),
+  is_archived: z.boolean().optional(),
 });
 
 export const sendMessageSchema = z.object({

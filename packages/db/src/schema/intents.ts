@@ -90,3 +90,4 @@ export type UserIntent = typeof userIntents.$inferSelect;
 export type NewUserIntent = typeof userIntents.$inferInsert;
 export type IntentComplementarity = typeof intentComplementarity.$inferSelect;
 export type InboundIntentFilter = typeof inboundIntentFilters.$inferSelect;
+export type NewInboundIntentFilter = typeof inboundIntentFilters.$inferInsert;

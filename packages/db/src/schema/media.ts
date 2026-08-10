@@ -11,6 +11,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
+import { conversations } from "./messaging";
 
 // PRD §16.3 "REPUTATION, MEDIA, BILLING" (media only — mirrors
 // migrations/0001_profile_geo.sql exactly). Referenced by profiles, so it's
@@ -37,6 +38,13 @@ export const media = pgTable(
     avScanState: text("av_scan_state").notNull().default("pending"),
     committedAt: timestamp("committed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    // P16.1 (migration 0015) — see that migration's own comment: the
+    // PRD's media DDL has no FK to conversations/messages, so this is the
+    // minimum needed to make §17.7's "participant check" on signed serve
+    // URLs a real, checkable thing for message attachments.
+    conversationId: uuid("conversation_id").references(() => conversations.id, {
+      onDelete: "set null",
+    }),
   },
   (table) => [
     check(
@@ -53,6 +61,9 @@ export const media = pgTable(
     index("idx_media_phash")
       .on(table.perceptualHash)
       .where(sql`${table.kind} = 'avatar'`),
+    index("idx_media_conversation")
+      .on(table.conversationId)
+      .where(sql`${table.conversationId} IS NOT NULL`),
   ],
 );
 

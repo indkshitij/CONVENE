@@ -40,6 +40,16 @@ export function assertWeightsSumToOne(weights: MatchingWeights): void {
   }
 }
 
+// PRD §11.11/AD-8: "rejected unless the weights sum to 1.00." A non-
+// throwing sibling of assertWeightsSumToOne for the remote-config
+// accept/reject branch (P12.3's MatchingWeightsProvider), which needs a
+// boolean to decide whether to write the proposed config or reject it —
+// not an exception to catch.
+export function isValidWeights(weights: MatchingWeights): boolean {
+  const sum = Object.values(weights).reduce((total, weight) => total + weight, 0);
+  return Math.abs(sum - 1.0) <= WEIGHT_SUM_TOLERANCE;
+}
+
 // Asserted at module load (P4.2 acceptance) so a bad edit to
 // DEFAULT_WEIGHTS fails immediately, not silently at scoring time.
 assertWeightsSumToOne(DEFAULT_WEIGHTS);

@@ -10,3 +10,14 @@ export interface ProfileUpdatedEvent {
   userId: string;
   changedFields: string[];
 }
+
+// PRD §17.2 Profile module "Publishes: ... profile.location_changed" (P9.1)
+// — a distinct, more specific event than profile.updated since location
+// changes (BR-LOC-11 timezone overlap, matching's location score) have
+// their own invalidation needs (candidate re-generation by geo tier) that
+// don't overlap with the embedding-refresh trigger fields.
+export const PROFILE_LOCATION_CHANGED_EVENT = "profile.location_changed";
+
+export interface ProfileLocationChangedEvent {
+  userId: string;
+}

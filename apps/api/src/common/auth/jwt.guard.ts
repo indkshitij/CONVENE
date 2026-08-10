@@ -25,6 +25,7 @@ export const OnboardingAllowed = (): MethodDecorator =>
 interface RequestLike {
   headers: Record<string, string | string[] | undefined>;
   authContext?: AuthContext;
+  userId?: string;
 }
 
 // PRD §17.4/§20.3: verifies the bearer access token, loads the (Redis-
@@ -85,6 +86,12 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     request.authContext = authContext;
+    // RateLimitGuard's "user" key dimension reads this directly (see its
+    // own extractDimensionValue) — several already-declared policies
+    // (messages-per-user, discovery-feed, ai-features, admin-actions...)
+    // depend on it being set here, not derived from authContext.id at
+    // the point of use.
+    request.userId = authContext.id;
     return true;
   }
 }

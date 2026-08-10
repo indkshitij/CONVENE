@@ -61,3 +61,49 @@ export const createIntentSchema = z.object({
   is_primary: z.boolean().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
+
+// PRD §10.4.6: `PATCH /intents/:id { "detail":"...", "expires_in_days":90,
+// "is_paused":true }` — type/is_primary aren't editable here (type is
+// immutable once declared; is_primary has its own dedicated endpoint,
+// POST /intents/:id/primary, since setting it is a whole-set operation —
+// unsetting every other active intent's primary flag — not a per-row patch).
+export const updateIntentSchema = z
+  .object({
+    detail: intentDetailSchema.nullable().optional(),
+    expires_in_days: expiresInDaysSchema.optional(),
+    is_paused: z.boolean().optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+  })
+  .strict();
+
+// PRD §10.4.6: `POST /intents/:id/renew { "expires_in_days":30 }`.
+export const renewIntentSchema = z
+  .object({
+    expires_in_days: expiresInDaysSchema,
+  })
+  .strict();
+
+// PRD §10.4.6: `PUT /settings/inbound-intent-filters { "accepted_intents":
+// [...], "min_experience_years":2, "max_experience_years":6,
+// "industries":[3], "verified_only":true, "max_inbound_per_day":8 }`.
+// Every field is optional/nullable — an absent or null value means "no
+// restriction on this dimension," matching inbound_intent_filters'
+// nullable columns (§10.4.7: "accepted_intents ... NULL = accept all").
+export const MAX_INBOUND_PER_DAY_ERROR = "Choose a daily cap between 1 and 200";
+
+export const inboundIntentFiltersSchema = z
+  .object({
+    accepted_intents: z.array(intentTypeSchema).nullable().optional(),
+    min_experience_years: z.number().min(0).max(60).nullable().optional(),
+    max_experience_years: z.number().min(0).max(60).nullable().optional(),
+    industries: z.array(z.number().int()).nullable().optional(),
+    verified_only: z.boolean().optional(),
+    max_inbound_per_day: z
+      .number()
+      .int()
+      .min(1, MAX_INBOUND_PER_DAY_ERROR)
+      .max(200, MAX_INBOUND_PER_DAY_ERROR)
+      .nullable()
+      .optional(),
+  })
+  .strict();

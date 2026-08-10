@@ -15,4 +15,15 @@ export type { ChipProps } from "./chip/chip";
 export { SectionHeader } from "./section-header/section-header";
 export type { SectionHeaderProps } from "./section-header/section-header";
 
+export { Label } from "./label/label";
+export type { LabelProps } from "./label/label";
+
+export { FieldError } from "./field-error/field-error";
+
+export { Input } from "./input/input";
+export type { InputProps } from "./input/input";
+
+export { PasswordInput } from "./password-input/password-input";
+export type { PasswordInputProps } from "./password-input/password-input";
+
 export { cn } from "./lib/cn";

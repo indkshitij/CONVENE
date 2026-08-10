@@ -25,3 +25,13 @@ export const tsvector = customType<{ data: string }>({
     return "tsvector";
   },
 });
+
+// Postgres BYTEA — no drizzle-orm helper exists. Used for
+// profiles.coordinates_encrypted (P9.1): a pgcrypto pgp_sym_encrypt(...)
+// blob, written/read via raw SQL at the call site (location-encryption.ts),
+// never selected as plain column data by ordinary queries.
+export const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});

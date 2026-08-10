@@ -6,6 +6,13 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "incremental": true,
+    // tests/e2e/support/run-mock-api-server.mts imports mock-api-server.ts
+    // by its literal ".ts" extension — required for Node's own native TS
+    // type-stripping to resolve it when run directly (`node
+    // run-mock-api-server.mts`), which is how playwright.config.ts's
+    // webServer starts it. Safe since this config is noEmit-only (tsc
+    // never actually emits these files).
+    "allowImportingTsExtensions": true,
     "plugins": [
       {
         "name": "next"

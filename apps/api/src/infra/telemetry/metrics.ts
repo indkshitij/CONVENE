@@ -29,3 +29,18 @@ export const httpRequestDurationSeconds = new Histogram({
   buckets: [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
   registers: [metricsRegistry],
 });
+
+// PRD §10.5.5 RE-3 / P9.3: "The tier reached is recorded per feed request
+// as expansion_stage and monitored: stage >= 4 for > 40% of requests in a
+// launch city is a supply incident (§3.4)." This histogram is the
+// emission half of that — a Grafana/alerting rule computing the rolling
+// median (or the >=4 proportion) per city_id from these buckets is the
+// monitoring half, external to this app, same division of responsibility
+// as every other RED metric here.
+export const matchingExpansionStage = new Histogram({
+  name: "matching_expansion_stage",
+  help: "Radius-expansion stage reached per feed request, labelled by city_id (§10.5.5 RE-3 supply-incident signal).",
+  labelNames: ["city_id"],
+  buckets: [0, 1, 2, 3, 4, 5],
+  registers: [metricsRegistry],
+});

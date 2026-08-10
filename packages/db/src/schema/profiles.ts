@@ -16,9 +16,9 @@ import {
   varchar,
   vector,
 } from "drizzle-orm/pg-core";
-import { geographyPoint, tsvector } from "./custom-types";
+import { bytea, geographyPoint, tsvector } from "./custom-types";
 import { employmentType, locPrivacy, remotePref, visibility } from "./enums";
-import { cities } from "./geo";
+import { cities, countries } from "./geo";
 import { media } from "./media";
 import { users } from "./users";
 
@@ -58,7 +58,18 @@ export const profiles = pgTable(
     yearsExperienceOverride: boolean("years_experience_override").notNull().default(false),
     socialLinks: jsonb("social_links").notNull().default({}),
     cityId: integer("city_id").references(() => cities.id),
+    // P9.3 / migrations/0011 — denormalized from city_id purely so
+    // §10.5.6's idx_profiles_country_tz index can exist directly on this
+    // table (stage 4 of radius expansion: same country_code). No other
+    // stage needed a comparable direct column per the PRD's own index
+    // list, so state-tier matching (stage 3) still joins through cities.
+    countryCode: char("country_code", { length: 2 }).references(() => countries.code),
     coordinates: geographyPoint("coordinates"),
+    // P9.1 / migrations/0010_location_encryption.sql — see that
+    // migration's own comment for why this coexists with the plaintext
+    // `coordinates` column instead of replacing it. Never read by any
+    // query path; write-only defense-in-depth.
+    coordinatesEncrypted: bytea("coordinates_encrypted"),
     geohash5: char("geohash_5", { length: 5 }),
     geohash3: char("geohash_3", { length: 3 }),
     timezone: text("timezone"),
@@ -71,6 +82,8 @@ export const profiles = pgTable(
     remotePreference: remotePref("remote_preference").notNull().default("any"),
     openToRelocate: boolean("open_to_relocate").notNull().default(false),
     relocateCityIds: integer("relocate_city_ids").array(),
+    // RE-6 (§10.5.5): Premium users may pin an expansion stage/tier.
+    pinnedTier: smallint("pinned_tier"),
     verificationLevel: smallint("verification_level").notNull().default(0),
     profileCompletion: smallint("profile_completion").notNull().default(0),
     searchVector: tsvector("search_vector"),
@@ -83,11 +96,16 @@ export const profiles = pgTable(
     check("chk_prof_location_source", sql`${table.locationSource} IN ('gps','manual','ip')`),
     check("chk_prof_search_radius", sql`${table.searchRadiusKm} BETWEEN 1 AND 500`),
     check("chk_prof_verification_level", sql`${table.verificationLevel} BETWEEN 0 AND 4`),
+    check(
+      "chk_prof_pinned_tier",
+      sql`${table.pinnedTier} IS NULL OR ${table.pinnedTier} BETWEEN 0 AND 6`,
+    ),
     index("idx_prof_coords").using("gist", table.coordinates),
     index("idx_prof_geohash5")
       .on(table.geohash5)
       .where(sql`${table.locationPrivacy} <> 'hidden'`),
     index("idx_prof_city").on(table.cityId, table.profileCompletion.desc()),
+    index("idx_prof_country_tz").on(table.countryCode, table.timezone),
     index("idx_prof_industry").on(table.industryId, table.yearsExperience),
     index("idx_prof_search").using("gin", table.searchVector),
     index("idx_prof_discoverable")

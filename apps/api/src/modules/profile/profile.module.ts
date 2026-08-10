@@ -7,6 +7,9 @@ import { DeterministicStubEmbeddingProvider, EMBEDDING_PROVIDER } from "./embedd
 import { EmbeddingRefreshListener } from "./embedding-refresh.listener";
 import { EmbeddingRefreshProducer } from "./embedding-refresh.producer";
 import { EmbeddingService } from "./embedding.service";
+import { LocationPreferencesController } from "./location-preferences.controller";
+import { LocationController } from "./location.controller";
+import { LocationService } from "./location.service";
 import { ProfileChildrenController } from "./profile-children.controller";
 import { ProfileChildrenService } from "./profile-children.service";
 import { ProfileController } from "./profile.controller";
@@ -28,7 +31,13 @@ import { VerificationLadderService } from "./verification-ladder.service";
 // not built this phase, same precedent as EMAIL_TRANSPORT.
 @Module({
   imports: [TaxonomyModule, AuthModule],
-  controllers: [ProfileController, ProfileChildrenController, VerificationLadderController],
+  controllers: [
+    ProfileController,
+    ProfileChildrenController,
+    VerificationLadderController,
+    LocationController,
+    LocationPreferencesController,
+  ],
   providers: [
     ProfileService,
     ProfileChildrenService,
@@ -39,6 +48,7 @@ import { VerificationLadderService } from "./verification-ladder.service";
     EmbeddingRefreshProducer,
     EmbeddingRefreshListener,
     EmbeddingRefreshWorker,
+    LocationService,
   ],
   exports: [
     ProfileService,
@@ -46,6 +56,7 @@ import { VerificationLadderService } from "./verification-ladder.service";
     CompletionService,
     VerificationLadderService,
     EmbeddingService,
+    LocationService,
   ],
 })
 export class ProfileModule {}

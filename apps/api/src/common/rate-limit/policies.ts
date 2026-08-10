@@ -24,9 +24,15 @@ export interface RateLimitPolicy {
 //     different algorithm. The PRD asks for one sliding-window mechanism
 //     applied uniformly, so this is treated as informational rather than
 //     separately enforced.
-//   - connection-requests-velocity: only the 5/10min velocity cap is a
+//   - connection-requests-velocity(-pro): only the 60s velocity cap is a
 //     rate limit; the plan-based daily quota (8/30/120) is a plan
-//     entitlement check owned by the connections/billing modules.
+//     entitlement check owned by the connections module (Redis INCR +
+//     EXPIRE, not a sliding-window log — see ConnectionQuotaService).
+//     Split into two policies because the limit itself is plan-dependent
+//     (free/premium 5, pro 8) and RateLimitPolicy has no per-plan
+//     variant; the caller picks the scope by plan. §10.6.7's own table
+//     states "60 s," which supersedes the P14.1 prompt text's "5-per-10-
+//     minute" paraphrase — the table is the more detailed source.
 //   - messages-*: the 3-message monologue rule is a business rule owned
 //     by the messaging module, not a rate limit.
 //   - media-upload: the 200MB/day cap is a data-volume quota, not a
@@ -87,9 +93,17 @@ export const RATE_LIMIT_POLICIES = {
   },
   "connection-requests-velocity": {
     limit: 5,
-    windowSeconds: 10 * 60,
+    windowSeconds: 60,
     keyDimensions: ["user"],
-    notes: "Plan-based daily quota (8/30/120) is a separate entitlement check, not modelled here.",
+    notes:
+      "Free and Premium (5/60s). Plan-based daily quota (8/30/120) is a separate entitlement check, not modelled here.",
+  },
+  "connection-requests-velocity-pro": {
+    limit: 8,
+    windowSeconds: 60,
+    keyDimensions: ["user"],
+    notes:
+      "Pro plan's higher 60s velocity cap. Plan-based daily quota is a separate entitlement check, not modelled here.",
   },
   "messages-per-conversation": {
     limit: 60,

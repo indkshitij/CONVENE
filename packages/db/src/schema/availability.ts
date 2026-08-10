@@ -35,6 +35,9 @@ export const availabilitySchedules = pgTable(
     untilAt: timestamp("until_at", { withTimezone: true }),
     reminderMinutesBefore: integer("reminder_minutes_before").default(10),
     isActive: boolean("is_active").notNull().default(true),
+    // P10.3 / migrations/0012 — see that migration's own comment for why
+    // this is a denormalized array rather than a join table.
+    sessionIntentIds: uuid("session_intent_ids").array(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -123,6 +126,7 @@ export const availabilityLive = pgTable(
 );
 
 export type AvailabilitySchedule = typeof availabilitySchedules.$inferSelect;
+export type NewAvailabilitySchedule = typeof availabilitySchedules.$inferInsert;
 export type AvailabilitySession = typeof availabilitySessions.$inferSelect;
 export type NewAvailabilitySession = typeof availabilitySessions.$inferInsert;
 export type AvailabilityLive = typeof availabilityLive.$inferSelect;

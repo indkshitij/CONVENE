@@ -1,6 +1,7 @@
 import { users } from "@convene/db";
 import { Injectable, Optional } from "@nestjs/common";
 import { eq } from "drizzle-orm";
+import { AuditLogRepository } from "../../../common/audit/audit-log.repository";
 import { type Clock, systemClock } from "../../../common/clock";
 import { PostgresService } from "../../../infra/postgres/postgres.service";
 import { RefreshService } from "./refresh.service";
@@ -27,6 +28,7 @@ export class AccountDeletionService {
     private readonly postgres: PostgresService,
     private readonly refreshService: RefreshService,
     @Optional() private readonly clock: Clock = systemClock,
+    @Optional() private readonly auditLog?: AuditLogRepository,
   ) {}
 
   async requestDeletion(userId: string): Promise<RequestDeletionResult> {
@@ -39,6 +41,16 @@ export class AccountDeletionService {
       .where(eq(users.id, userId));
 
     await this.refreshService.logoutAll(userId);
+
+    // §20.8: "every data export and deletion."
+    await this.auditLog?.record({
+      actorId: userId,
+      actorType: "user",
+      action: "account.deletion_requested",
+      entityType: "user",
+      entityId: userId,
+      after: { purge_at: purgeAt.toISOString() },
+    });
 
     return { purgeScheduledAt: purgeAt };
   }
@@ -61,5 +73,13 @@ export class AccountDeletionService {
       .update(users)
       .set({ status: "active", deletionRequestedAt: null, purgeAt: null })
       .where(eq(users.id, userId));
+
+    await this.auditLog?.record({
+      actorId: userId,
+      actorType: "user",
+      action: "account.deletion_cancelled",
+      entityType: "user",
+      entityId: userId,
+    });
   }
 }

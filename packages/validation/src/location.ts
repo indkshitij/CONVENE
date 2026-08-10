@@ -28,12 +28,17 @@ export const preciseLocationSchema = z.object({
 export const CITY_ID_ERROR = "Choose a city";
 export const cityIdSchema = z.number().int().positive(CITY_ID_ERROR);
 
+export const manualLocationSchema = z.object({ city_id: cityIdSchema });
+
 // PRD §10.5.3 BR-LOC-03: "Location privacy levels: exact, city_only,
 // country_only, hidden."
 export const LOCATION_PRIVACY_ERROR = "Choose a valid location privacy level";
 export const locationPrivacySchema = z.enum(["exact", "city_only", "country_only", "hidden"], {
   message: LOCATION_PRIVACY_ERROR,
 });
+
+// PRD §10.5.7: `PUT /location/privacy { "location_privacy":"city_only" }`.
+export const updateLocationPrivacySchema = z.object({ location_privacy: locationPrivacySchema });
 
 // PRD §10.2.2 `remote_preference` field spec (shared here since
 // §10.5.7's location preferences endpoint sets it too).

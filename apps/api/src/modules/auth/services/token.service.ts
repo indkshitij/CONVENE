@@ -25,6 +25,7 @@ export interface DecodedAccessToken extends AccessTokenClaims {
   jti: string;
   aud: string;
   iss: string;
+  typ: "access";
 }
 
 export interface RefreshTokenPair {
@@ -46,15 +47,19 @@ export class TokenService {
 
   async signAccessToken(claims: AccessTokenClaims): Promise<string> {
     const { kid, privateKeyPem } = await this.jwks.getSigningKey();
-    return jwt.sign({ role: claims.role, plan: claims.plan, tv: claims.tv }, privateKeyPem, {
-      algorithm: "RS256",
-      subject: claims.sub,
-      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
-      jwtid: uuidv7(),
-      audience: AUDIENCE,
-      issuer: ISSUER,
-      keyid: kid,
-    });
+    return jwt.sign(
+      { typ: "access", role: claims.role, plan: claims.plan, tv: claims.tv },
+      privateKeyPem,
+      {
+        algorithm: "RS256",
+        subject: claims.sub,
+        expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+        jwtid: uuidv7(),
+        audience: AUDIENCE,
+        issuer: ISSUER,
+        keyid: kid,
+      },
+    );
   }
 
   async verifyAccessToken(token: string): Promise<DecodedAccessToken> {
@@ -77,6 +82,15 @@ export class TokenService {
     });
     if (typeof payload === "string") {
       throw new Error("TokenService: unexpected string payload");
+    }
+    // P11.1: WS tickets (ticket.service.ts, apps/realtime) are also RS256
+    // tokens signed by this same KMS key, but carry typ:"ws_ticket" and no
+    // role/plan/tv — this guard is defense-in-depth against one ever being
+    // presented as a Bearer access token (JwtAuthGuard's tv comparison
+    // would already reject it, since a ticket's tv is undefined, but an
+    // explicit type check is clearer than relying on that side effect).
+    if ((payload as { typ?: string }).typ !== "access") {
+      throw new Error("TokenService: not an access token");
     }
     return payload as unknown as DecodedAccessToken;
   }

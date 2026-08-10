@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Convene",
+    "slug": "convene",
+    "version": "1.0.0",
+    "scheme": "convene",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "app.convene.mobile",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "app.convene.mobile",
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Convene uses your location, while the app is open, to show how far away other members are — always as a rounded distance bucket, never your exact address. It's never used in the background.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

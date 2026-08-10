@@ -11,9 +11,21 @@ function requireDatabaseUrl(databaseUrl?: string): string {
   return url;
 }
 
+// P29.2 security review (§20.5: "5-second statement timeout on API
+// queries" / §20.1 T15 "Denial of service"): confirmed by grep that no
+// query-timeout config existed anywhere before this — a slow/runaway
+// query (accidental cross join, a bug, or deliberate DoS attempt) could
+// hold a pool connection indefinitely. Scoped to the pooled (API)
+// client only — createMigrationClient() below intentionally has no
+// timeout, since DDL migrations can legitimately run long.
+const API_STATEMENT_TIMEOUT_MS = 5_000;
+
 /** Pooled client for the running API — many reused connections. */
 export function createPooledClient(databaseUrl?: string) {
-  const queryClient = postgres(requireDatabaseUrl(databaseUrl), { max: 10 });
+  const queryClient = postgres(requireDatabaseUrl(databaseUrl), {
+    max: 10,
+    connection: { statement_timeout: API_STATEMENT_TIMEOUT_MS },
+  });
   return drizzle(queryClient, { schema });
 }
 

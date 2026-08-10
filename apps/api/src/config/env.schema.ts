@@ -26,6 +26,28 @@ export const envSchema = z.object({
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
   LINKEDIN_OAUTH_CLIENT_ID: z.string().optional(),
   LINKEDIN_OAUTH_CLIENT_SECRET: z.string().optional(),
+  // PRD §10.5.2/P9.1: pgcrypto field-level encryption for
+  // profiles.coordinates_encrypted (see migrations/0010's own comment for
+  // why this coexists with the plaintext, GIST-indexed coordinates
+  // column). Optional for the same reason as the OAuth secrets above —
+  // location.service.ts throws a clear error at call time if a location
+  // update is attempted without it configured, rather than failing boot
+  // for every dev/test env that hasn't set one up.
+  LOCATION_ENCRYPTION_KEY: z.string().min(32).optional(),
+  // PRD §17.7: "S3-compatible object storage." No cloud storage account
+  // exists in this codebase's dev/test environment — same "local provider
+  // now, real backend later, same interface" precedent as JWKS_KEYS_PATH
+  // above (P16.1's StorageProvider). Both default rather than being
+  // required/optional-with-runtime-throw: a real production deployment
+  // swaps STORAGE_PROVIDER for an S3-backed implementation entirely
+  // (this local one is dev/test scaffolding, same as JWKS_KEYS_PATH's own
+  // default), so there's no meaningful "unconfigured in prod" state to
+  // guard against the way LOCATION_ENCRYPTION_KEY's optional secret does.
+  MEDIA_STORAGE_ROOT: z.string().default(".media-storage"),
+  MEDIA_SIGNING_SECRET: z
+    .string()
+    .min(32)
+    .default("dev-only-media-signing-secret-not-for-production-use"),
 });
 
 export type Env = z.infer<typeof envSchema>;

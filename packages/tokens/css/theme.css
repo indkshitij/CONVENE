@@ -5,6 +5,19 @@
  * (see apps/web/app/globals.css).
  */
 @theme {
+  /*
+   * design.md §14.0's six breakpoints (xs360 -> 2xl1536), added for
+   * P19.1's app shell (bottom tab bar / sidebar switch). md/lg/xl/2xl
+   * already equal Tailwind v4's own defaults (768/1024/1280/1536) so
+   * only `xs` (no Tailwind default) and `sm` (640 by default) actually
+   * change — `sm` moving to 480px is a deliberate, sitewide unification
+   * rather than a shell-only variant, since Tailwind v4's breakpoints
+   * are global to one build and MAIN_DESIGN.md's marketing surface
+   * doesn't define its own breakpoint scale to conflict with.
+   */
+  --breakpoint-xs: 360px;
+  --breakpoint-sm: 480px;
+
   /* Colors */
   --color-sky-tint: #ebf5ff;
   --color-paper-white: #ffffff;
@@ -24,6 +37,18 @@
   --color-violet-gradient: #e4ccff;
   --color-aqua-gradient: #c2e9ff;
   --color-peach-gradient: #ffd1b8;
+
+  /* docs/design.md §15 — see variables.css's own comment. Availability
+   * state colors and --motion-* tokens are deliberately NOT duplicated
+   * here (unlike the two danger/warning colors) — variables.css's :root
+   * block already makes them available globally via plain CSS cascade
+   * (Tailwind's arbitrary-value syntax, e.g. bg-[color:var(--x)], only
+   * references a variable by name; it doesn't require @theme to declare
+   * it), the same precedent --motion-fast already established for
+   * P20.1's otp-shake keyframe. */
+  --color-danger-text: #b91c1c;
+  --color-danger-tint: #fee2e2;
+  --color-warning-tint: #fef3c7;
 
   /* Typography */
   --font-aeonik:

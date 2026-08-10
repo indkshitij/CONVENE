@@ -7,3 +7,4 @@ export { hasEntitlement } from "./has-entitlement.policy";
 export { selfScoped } from "./self-scoped.policy";
 export { publicReferenceData } from "./public-reference-data.policy";
 export { anyAuthenticatedUser } from "./any-authenticated-user.policy";
+export { adminOnly } from "./admin-only.policy";

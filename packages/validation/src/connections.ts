@@ -37,6 +37,12 @@ export const createConnectionRequestSchema = z.object({
   match_score: z.number().optional(),
 });
 
+// PRD §10.6.6: `POST /blocks { "user_id":"...", "reason":"harassment" }`.
+export const createBlockSchema = z.object({
+  user_id: z.string().min(1),
+  reason: z.string().max(500).optional(),
+});
+
 // PRD §10.6.6 report contract — no stated length limit on `description` in
 // any §10 table, so none is invented here.
 export const REPORT_TARGET_TYPES = ["user", "message", "profile", "conversation"] as const;

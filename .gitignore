@@ -12,6 +12,10 @@ node_modules
 
 # testing
 coverage
+test-results
+playwright-report
+blob-report
+playwright/.cache
 
 # next.js
 /.next/
@@ -44,6 +48,12 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# expo (P27.1)
+.expo/
+apps/mobile/expo-env.d.ts
+apps/mobile/ios/
+apps/mobile/android/
 
 # typescript
 *.tsbuildinfo

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Inter } from "next/font/google";
+import { ToastViewport } from "@/components/shared/toast-viewport";
 import "./globals.css";
 
 // Loaded into their own variables (not --font-geist/--font-aeonik directly,
@@ -29,7 +30,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geist.variable} ${aeonik.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <ToastViewport />
+      </body>
     </html>
   );
 }

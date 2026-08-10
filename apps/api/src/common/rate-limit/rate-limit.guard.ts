@@ -46,25 +46,30 @@ export class RateLimitGuard implements CanActivate {
     );
     if (!options) return true;
 
-    const policy = RATE_LIMIT_POLICIES[options.scope];
     const request = context.switchToHttp().getRequest<RateLimitRequestLike>();
     const response = context.switchToHttp().getResponse<RateLimitResponseLike>();
-
-    const key = rateLimitKey(options.scope, this.buildCompositeKeyPart(policy, request));
+    const scopes = Array.isArray(options.scope) ? options.scope : [options.scope];
     const nowMs = Date.now();
-    const windowMs = policy.windowSeconds * 1000;
 
-    const result = await this.check(key, nowMs, windowMs, policy);
+    // Every scope must pass — checked in order, so the request fails
+    // fast on whichever limit it hits first rather than always paying
+    // for every check.
+    for (const scope of scopes) {
+      const policy = RATE_LIMIT_POLICIES[scope];
+      const key = rateLimitKey(scope, this.buildCompositeKeyPart(policy, request));
+      const windowMs = policy.windowSeconds * 1000;
+      const result = await this.check(key, nowMs, windowMs, policy);
 
-    response.setHeader("X-RateLimit-Limit", String(policy.limit));
-    response.setHeader("X-RateLimit-Remaining", String(Math.max(0, policy.limit - result.count)));
-    response.setHeader("X-RateLimit-Reset", String(Math.ceil((nowMs + windowMs) / 1000)));
+      response.setHeader("X-RateLimit-Limit", String(policy.limit));
+      response.setHeader("X-RateLimit-Remaining", String(Math.max(0, policy.limit - result.count)));
+      response.setHeader("X-RateLimit-Reset", String(Math.ceil((nowMs + windowMs) / 1000)));
 
-    if (!result.allowed) {
-      response.setHeader("Retry-After", String(policy.windowSeconds));
-      throw new TooManyRequestsAppError("TOO_MANY_REQUESTS", "Too many requests.", {
-        retryAfter: policy.windowSeconds,
-      });
+      if (!result.allowed) {
+        response.setHeader("Retry-After", String(policy.windowSeconds));
+        throw new TooManyRequestsAppError("TOO_MANY_REQUESTS", "Too many requests.", {
+          retryAfter: policy.windowSeconds,
+        });
+      }
     }
 
     return true;

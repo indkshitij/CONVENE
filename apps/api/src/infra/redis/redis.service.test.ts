@@ -31,6 +31,8 @@ const fakeEnv: Env = {
   REDIS_URL: "redis://localhost:6379",
   LOG_LEVEL: "info",
   JWKS_KEYS_PATH: ".keys/jwks-keys.json",
+  MEDIA_STORAGE_ROOT: ".media-storage",
+  MEDIA_SIGNING_SECRET: "dev-only-media-signing-secret-not-for-production-use",
 };
 
 // P3.3 acceptance: "stop Redis in a test and assert /health/ready returns

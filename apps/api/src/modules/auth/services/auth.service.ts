@@ -3,6 +3,7 @@ import { auth as authValidation, common as commonValidation } from "@convene/val
 import { Injectable, Optional } from "@nestjs/common";
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
+import { AuditLogRepository } from "../../../common/audit/audit-log.repository";
 import {
   BadRequestAppError,
   ConflictAppError,
@@ -35,6 +36,12 @@ export interface UserResponse {
   email_verified: boolean;
   onboarding_step: number;
   status: string;
+  // P26.1: needed so apps/web's (admin) route group can role-gate itself
+  // without a separate round trip — backend access control never relied
+  // on this (every admin controller already reads AuthContext.role from
+  // the JWT via RolesGuard), this only lets the frontend know whether to
+  // render the admin nav/layout at all.
+  role: string;
 }
 
 export interface TokensResponse {
@@ -85,6 +92,7 @@ export class AuthService {
     // See otp.service.ts's constructor comment: Clock is an interface, so
     // @Optional() is required for Nest DI to fall through to the default.
     @Optional() private readonly clock: Clock = systemClock,
+    @Optional() private readonly auditLog?: AuditLogRepository,
   ) {}
 
   // PRD §10.1.7 endpoint 1. Enumeration defence: a verified conflict is the
@@ -219,6 +227,15 @@ export class AuthService {
 
     await this.loginLockout.reset(identifier, ip);
     const tokens = await this.issueTokens(user.id, user.role, user.tokenVersion, deviceFingerprint);
+    // §20.8: "every authentication event."
+    await this.auditLog?.record({
+      actorId: user.id,
+      actorType: "user",
+      action: "auth.login",
+      entityType: "user",
+      entityId: user.id,
+      ip,
+    });
     return { user: this.toUserResponse(user), tokens };
   }
 
@@ -358,6 +375,7 @@ export class AuthService {
         email_verified: false,
         onboarding_step: 1,
         status: "pending_verification",
+        role: "user",
       },
       tokens,
     };
@@ -439,6 +457,7 @@ export class AuthService {
     emailVerifiedAt: Date | null;
     onboardingStep: number;
     status: string;
+    role: string;
   }): UserResponse {
     return {
       id: user.id,
@@ -447,6 +466,7 @@ export class AuthService {
       email_verified: user.emailVerifiedAt !== null,
       onboarding_step: user.onboardingStep,
       status: user.status,
+      role: user.role,
     };
   }
 

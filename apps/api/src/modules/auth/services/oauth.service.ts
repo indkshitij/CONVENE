@@ -55,6 +55,7 @@ export interface UserResponse {
   email_verified: boolean;
   onboarding_step: number;
   status: string;
+  role: string;
 }
 
 export interface CallbackResult {
@@ -324,6 +325,7 @@ export class OAuthService {
     emailVerifiedAt: Date | null;
     onboardingStep: number;
     status: string;
+    role: string;
   }): UserResponse {
     return {
       id: user.id,
@@ -332,6 +334,7 @@ export class OAuthService {
       email_verified: user.emailVerifiedAt !== null,
       onboarding_step: user.onboardingStep,
       status: user.status,
+      role: user.role,
     };
   }
 }

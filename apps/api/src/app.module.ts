@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { AuditModule } from "./common/audit/audit.module";
 import { CommonModule } from "./common/common.module";
 import { ConfigModule } from "./config/config.module";
 import { PostgresModule } from "./infra/postgres/postgres.module";
@@ -14,9 +15,11 @@ import { ConnectionsModule } from "./modules/connections/connections.module";
 import { HealthModule } from "./modules/health/health.module";
 import { IntentsModule } from "./modules/intents/intents.module";
 import { MatchingModule } from "./modules/matching/matching.module";
+import { MediaModule } from "./modules/media/media.module";
 import { MessagingModule } from "./modules/messaging/messaging.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { ProfileModule } from "./modules/profile/profile.module";
+import { RealtimeModule } from "./modules/realtime/realtime.module";
 import { SearchModule } from "./modules/search/search.module";
 import { TaxonomyModule } from "./modules/taxonomy/taxonomy.module";
 import { TrustSafetyModule } from "./modules/trust-safety/trust-safety.module";
@@ -31,6 +34,7 @@ import { TrustSafetyModule } from "./modules/trust-safety/trust-safety.module";
     PostgresModule,
     RedisModule,
     QueueModule,
+    AuditModule,
     // PRD §17.2's per-module "Publishes"/"Consumes" event tables (e.g.
     // profile.updated, intent.changed) — EventEmitter2 is the in-process
     // pub/sub these named events are implemented with, first introduced
@@ -53,6 +57,8 @@ import { TrustSafetyModule } from "./modules/trust-safety/trust-safety.module";
     AiGatewayModule,
     AdminModule,
     TaxonomyModule,
+    RealtimeModule,
+    MediaModule,
   ],
 })
 export class AppModule {}

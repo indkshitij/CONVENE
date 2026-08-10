@@ -49,6 +49,18 @@ export class ProfileController {
     return this.completionService.getCompletion(userId);
   }
 
+  // PRD §13 F11 trigger 4 — see ProfileService.getMyViewers's own comment
+  // for the free-vs-Premium split.
+  @Get("me/viewers")
+  @Policy(selfScoped)
+  async getMyViewers(@Req() request: RequestLike): Promise<{
+    count: number;
+    viewers: { user_id: string; full_name: string; viewed_at: string }[];
+  }> {
+    const { id: userId, plan } = requireAuthContext(request);
+    return this.profileService.getMyViewers(userId, plan !== "free");
+  }
+
   // See any-authenticated-user.policy.ts: visibility/block/private
   // enforcement is inherently I/O-bound and happens inside
   // ProfileService.getProfileForViewer(), not in this pure-function policy.

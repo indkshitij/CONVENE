@@ -69,6 +69,7 @@ export {
   type NewUserIntent,
   type IntentComplementarity,
   type InboundIntentFilter,
+  type NewInboundIntentFilter,
 } from "./intents";
 export {
   availabilitySchedules,
@@ -76,6 +77,7 @@ export {
   availabilitySessionIntents,
   availabilityLive,
   type AvailabilitySchedule,
+  type NewAvailabilitySchedule,
   type AvailabilitySession,
   type NewAvailabilitySession,
   type AvailabilityLive,
@@ -112,10 +114,13 @@ export { notifications, type Notification, type NewNotification } from "./notifi
 export {
   matchCandidates,
   feedImpressions,
+  matchingWeightConfigs,
   profileViews,
   savedSearches,
   type MatchCandidate,
   type FeedImpression,
+  type MatchingWeightConfig,
+  type NewMatchingWeightConfig,
   type ProfileView,
   type SavedSearch,
   type NewSavedSearch,
@@ -132,9 +137,15 @@ export {
 export {
   reports,
   moderationActions,
+  moderationActionApprovals,
+  appeals,
   type Report,
   type NewReport,
   type ModerationAction,
+  type NewModerationAction,
+  type ModerationActionApproval,
+  type Appeal,
+  type NewAppeal,
 } from "./safety";
 export {
   plans,

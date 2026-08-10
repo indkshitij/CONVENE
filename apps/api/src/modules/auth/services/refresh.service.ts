@@ -1,6 +1,7 @@
 import { refreshTokens, users, type Database, type RefreshToken } from "@convene/db";
 import { Injectable, Optional } from "@nestjs/common";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { AuditLogRepository } from "../../../common/audit/audit-log.repository";
 import { NotFoundAppError, UnauthorizedAppError } from "../../../common/errors/app-error";
 import { type Clock, systemClock } from "../../../common/clock";
 import { AuthContextService } from "../../../common/auth/auth-context";
@@ -62,6 +63,7 @@ export class RefreshService {
     // See otp.service.ts's constructor comment: Clock is an interface, so
     // @Optional() is required for Nest DI to fall through to the default.
     @Optional() private readonly clock: Clock = systemClock,
+    @Optional() private readonly auditLog?: AuditLogRepository,
   ) {}
 
   // PRD §10.1.7 endpoint 3. The whole read-decide-write sequence runs
@@ -134,6 +136,19 @@ export class RefreshService {
           "a previously used sign-in session was presented again",
         );
       }
+      // §20.8: "every authentication event" — token-reuse detection is
+      // the single highest-severity auth event this codebase has (it
+      // revokes an entire session family and bumps token_version), so
+      // it's the first auth call site wired to the audit log.
+      await this.auditLog?.record({
+        actorId: outcome.userId,
+        actorType: "system",
+        action: "auth.token_reuse_detected",
+        entityType: "user",
+        entityId: outcome.userId,
+        reason:
+          "A previously used refresh token was presented again; the session family was revoked.",
+      });
       throw new UnauthorizedAppError(
         "TOKEN_REUSE_DETECTED",
         "This session has been revoked for your security. Please sign in again.",

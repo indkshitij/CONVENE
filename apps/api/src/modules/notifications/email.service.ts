@@ -74,4 +74,16 @@ export class EmailService {
       html: `<p>Your work email verification code is: <strong>${code}</strong></p>`,
     });
   }
+
+  // P17.1: "digest email fallback for high-priority categories when push
+  // fails (§21.9)." A plain single-notification email, not the weekly
+  // digest category's own batched template — that's a separate, not-yet-
+  // built scheduled job.
+  sendNotificationFallbackEmail(to: string, title: string, body: string | null): Promise<void> {
+    return this.transport.send({
+      to,
+      subject: title,
+      text: body ?? title,
+    });
+  }
 }

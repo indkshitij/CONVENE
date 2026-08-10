@@ -16,6 +16,7 @@ import {
   mutualConnectionCounts,
   portfolioItems,
   profiles,
+  profileViews,
   reputationScores,
   skills,
   states,
@@ -31,6 +32,7 @@ import {
 import { profile as profileValidation } from "@convene/validation";
 import {
   DEFAULT_WEIGHTS,
+  bucketDistanceKm,
   computeScore,
   exactSkillOverlap,
   generateReasons,
@@ -57,7 +59,6 @@ import {
 import { type Clock, systemClock } from "../../common/clock";
 import { computeEtag } from "../../common/serialization/etag";
 import { PostgresService } from "../../infra/postgres/postgres.service";
-import { bucketDistanceKm } from "./location-bucket";
 import { PROFILE_UPDATED_EVENT } from "./profile-events";
 
 export type ProfileUpdateInput = z.infer<typeof profileValidation.profileUpdateSchema>;
@@ -156,6 +157,41 @@ export class ProfileService {
     // always provides a real one in the running app (app.module.ts, P7.4).
     @Optional() private readonly events?: EventEmitter2,
   ) {}
+
+  // PRD §13 F11 trigger 4: "who-viewed-me list tapped -> paywall: blurred
+  // list + count." Free plan gets the real count only (never a fabricated
+  // number) and an empty list; Premium gets the real (deduplicated,
+  // most-recent-first) viewer list too.
+  async getMyViewers(
+    userId: string,
+    isPremium: boolean,
+  ): Promise<{
+    count: number;
+    viewers: { user_id: string; full_name: string; viewed_at: string }[];
+  }> {
+    const totalRows = await this.postgres.db
+      .select({ total: sql<number>`count(distinct ${profileViews.viewerId})::int` })
+      .from(profileViews)
+      .where(eq(profileViews.viewedId, userId));
+    const total = totalRows[0]?.total ?? 0;
+
+    if (!isPremium) return { count: total, viewers: [] };
+
+    const rows = await this.postgres.db
+      .select({
+        user_id: profileViews.viewerId,
+        full_name: users.fullName,
+        viewed_at: sql<string>`max(${profileViews.viewedAt})`,
+      })
+      .from(profileViews)
+      .innerJoin(users, eq(users.id, profileViews.viewerId))
+      .where(eq(profileViews.viewedId, userId))
+      .groupBy(profileViews.viewerId, users.fullName)
+      .orderBy(sql`max(${profileViews.viewedAt}) DESC`)
+      .limit(50);
+
+    return { count: total, viewers: rows };
+  }
 
   async getMyProfile(userId: string): Promise<ProfileResponse> {
     return this.buildResponse(userId, userId);
@@ -310,7 +346,29 @@ export class ProfileService {
       throw new NotFoundAppError("PROFILE_NOT_FOUND", PROFILE_UNAVAILABLE_MESSAGE);
     }
 
+    // P24.2 (§13 F11 trigger 4, "who viewed me"): fire-and-forget, never
+    // blocks or fails the GET itself — a dropped view row just means one
+    // fewer entry in the viewer's own list, never a broken profile read.
+    void this.postgres.db
+      .insert(profileViews)
+      .values({ viewerId, viewedId: targetUserId })
+      .catch(() => undefined);
+
     return this.buildResponse(viewerId, targetUserId, relationship);
+  }
+
+  // P26.1: trust-safety's admin content-view endpoint needs to see a
+  // reported profile regardless of blocks/visibility — those checks
+  // exist to protect users from each other, not from an admin doing
+  // report review. Deliberately bypasses getProfileForViewer entirely
+  // (rather than adding an admin flag to it) so the normal viewer path
+  // can never accidentally skip its own privacy checks.
+  async getProfileForAdminReview(targetUserId: string): Promise<ProfileResponse> {
+    const target = await this.loadUserAndProfile(targetUserId);
+    if (!target) {
+      throw new NotFoundAppError("PROFILE_NOT_FOUND", PROFILE_UNAVAILABLE_MESSAGE);
+    }
+    return this.buildResponse(targetUserId, targetUserId);
   }
 
   private isVisibleTo(profileVisibility: string, relationship: Relationship): boolean {
